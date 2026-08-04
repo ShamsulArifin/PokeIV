@@ -818,6 +818,233 @@ function PokedexGrid({ onSelect, activeName }) {
   );
 }
 
+// ===================== IV CHART =====================
+function IVChart({ pokemon }) {
+  const goStats = React.useMemo(() => pokemon ? getGoStats(pokemon) : null, [pokemon]);
+  const [level, setLevel] = React.useState(40);
+  const [minCP, setMinCP] = React.useState('');
+  const [maxCP, setMaxCP] = React.useState('');
+  const [sortBy, setSortBy] = React.useState('iv'); // 'iv' | 'cp' | 'atk' | 'def' | 'hp'
+  const [showTop, setShowTop] = React.useState(50);
+  const [filterPerfect, setFilterPerfect] = React.useState(false);
+  const [highlightIV, setHighlightIV] = React.useState(null); // null | 'hundo' | 'lucky' | 'great' | 'ultra'
+
+  const allRows = React.useMemo(() => {
+    if (!goStats) return [];
+    const rows = [];
+    for (let a = 15; a >= 0; a--) {
+      for (let d = 15; d >= 0; d--) {
+        for (let h = 15; h >= 0; h--) {
+          const cp = calcCP(goStats.attack, goStats.defense, goStats.hp, a, d, h, level);
+          const hp = calcHP(goStats.hp, h, level);
+          const ivPct = Math.round(((a + d + h) / 45) * 100);
+          rows.push({ a, d, h, cp, hp, ivPct });
+        }
+      }
+    }
+    return rows;
+  }, [goStats, level]);
+
+  const filtered = React.useMemo(() => {
+    let rows = allRows;
+    const lo = parseInt(minCP) || 0;
+    const hi = parseInt(maxCP) || Infinity;
+    if (lo > 0 || hi < Infinity) rows = rows.filter(r => r.cp >= lo && r.cp <= hi);
+    if (filterPerfect) rows = rows.filter(r => r.a === 15 && r.d === 15 && r.h === 15);
+
+    if (highlightIV === 'hundo') rows = rows.filter(r => r.ivPct === 100);
+    else if (highlightIV === 'lucky') rows = rows.filter(r => r.a >= 12 && r.d >= 12 && r.h >= 12);
+    else if (highlightIV === 'great') rows = rows.filter(r => r.ivPct >= 82);
+    else if (highlightIV === 'ultra') rows = rows.filter(r => r.ivPct >= 67);
+
+    const key = sortBy === 'cp' ? 'cp' : sortBy === 'atk' ? 'a' : sortBy === 'def' ? 'd' : sortBy === 'hp' ? 'h' : 'ivPct';
+    rows = [...rows].sort((a, b) => b[key] - a[key]);
+    return rows.slice(0, showTop);
+  }, [allRows, minCP, maxCP, filterPerfect, highlightIV, sortBy, showTop]);
+
+  const getIVColor = (pct) => {
+    if (pct === 100) return { bg: 'rgba(251,191,36,0.25)', border: 'rgba(251,191,36,0.6)', text: '#fbbf24' };
+    if (pct >= 98) return { bg: 'rgba(52,211,153,0.2)', border: 'rgba(52,211,153,0.5)', text: '#34d399' };
+    if (pct >= 93) return { bg: 'rgba(96,165,250,0.2)', border: 'rgba(96,165,250,0.5)', text: '#60a5fa' };
+    if (pct >= 82) return { bg: 'rgba(129,140,248,0.15)', border: 'rgba(129,140,248,0.4)', text: '#818cf8' };
+    if (pct >= 67) return { bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)', text: '#a78bfa' };
+    return { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', text: '#9ca3af' };
+  };
+
+  const getIVLabel = (pct) => {
+    if (pct === 100) return { label: '100%', color: '#fbbf24' };
+    if (pct >= 98) return { label: '98%+', color: '#34d399' };
+    if (pct >= 93) return { label: '93%+', color: '#60a5fa' };
+    if (pct >= 82) return { label: '82%+', color: '#818cf8' };
+    if (pct >= 67) return { label: '67%+', color: '#a78bfa' };
+    return { label: 'Low', color: '#6b7280' };
+  };
+
+  const totalCount = allRows.length; // always 4096
+
+  if (!pokemon) return (
+    <div className="flex flex-col items-center justify-center h-48 text-gray-600 gap-3">
+      <p className="text-sm">Select a Pokémon to view the IV chart</p>
+    </div>
+  );
+
+  return (
+    <div className="animate-slide-up space-y-4">
+      {/* Controls */}
+      <div className="space-y-3">
+        {/* Level slider */}
+        <div className="glass rounded-xl p-4 space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="text-gray-300 text-sm font-semibold">Level</label>
+            <span className="text-indigo-400 font-bold text-sm bg-indigo-500/20 px-2 py-0.5 rounded-lg">{level}</span>
+          </div>
+          <input type="range" min="1" max="50" step="0.5" value={level}
+            onChange={e => setLevel(parseFloat(e.target.value))}
+            className="slider-thumb w-full"
+            style={{ background: `linear-gradient(90deg, #6366f1 ${((level-1)/49)*100}%, rgba(255,255,255,0.1) ${((level-1)/49)*100}%)` }} />
+          <div className="flex justify-between text-gray-600 text-xs"><span>1</span><span>25</span><span>50</span></div>
+        </div>
+
+        {/* CP Range filter */}
+        <div className="glass rounded-xl p-4">
+          <p className="text-gray-300 text-sm font-semibold mb-2">Filter by CP Range</p>
+          <div className="flex gap-2 items-center">
+            <input type="number" value={minCP} onChange={e => setMinCP(e.target.value)} placeholder="Min CP"
+              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+            <span className="text-gray-600">–</span>
+            <input type="number" value={maxCP} onChange={e => setMaxCP(e.target.value)} placeholder="Max CP"
+              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+            <button onClick={() => { setMinCP(''); setMaxCP(''); }}
+              className="px-3 py-2 glass rounded-lg text-gray-400 hover:text-white text-xs transition-colors">✕</button>
+          </div>
+        </div>
+
+        {/* Quick IV tier filters */}
+        <div className="flex flex-wrap gap-2">
+          {[
+            ['All', null, '#6b7280'],
+            ['★ Hundo (15/15/15)', 'hundo', '#fbbf24'],
+            ['☆ Lucky (12+)', 'lucky', '#34d399'],
+            ['≥98%', 'great', '#60a5fa'],
+            ['≥82%', 'ultra', '#818cf8'],
+          ].map(([label, val, color]) => (
+            <button key={label} onClick={() => setHighlightIV(val)}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
+              style={{
+                background: highlightIV === val ? color + '33' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${highlightIV === val ? color : 'rgba(255,255,255,0.1)'}`,
+                color: highlightIV === val ? color : '#9ca3af'
+              }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sort + Show count */}
+        <div className="flex gap-2 flex-wrap items-center">
+          <span className="text-gray-500 text-xs">Sort:</span>
+          {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v]) => (
+            <button key={v} onClick={() => setSortBy(v)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${sortBy===v ? 'bg-indigo-600 text-white' : 'glass text-gray-400 hover:text-white'}`}>
+              {l}
+            </button>
+          ))}
+          <span className="ml-auto text-gray-600 text-xs">Showing {filtered.length} of {allRows.filter(r => {
+            const lo = parseInt(minCP)||0, hi = parseInt(maxCP)||Infinity;
+            const cpOk = r.cp >= lo && r.cp <= hi;
+            const prefOk = !filterPerfect || (r.a===15&&r.d===15&&r.h===15);
+            return cpOk && prefOk;
+          }).length}</span>
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-2">
+        {[
+          ['100% (Hundo)', '#fbbf24'],
+          ['98%+ (Near)', '#34d399'],
+          ['93%+', '#60a5fa'],
+          ['82%+', '#818cf8'],
+          ['67%+', '#a78bfa'],
+          ['Below', '#6b7280'],
+        ].map(([label, color]) => (
+          <div key={label} className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-sm" style={{ background: color + '55', border: `1px solid ${color}` }} />
+            <span className="text-gray-500 text-xs">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="glass rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10">#</th>
+                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">IV</th>
+                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">ATK</th>
+                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">DEF</th>
+                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">HP IV</th>
+                <th className="px-3 py-2.5 text-center text-red-400 font-semibold">CP</th>
+                <th className="px-3 py-2.5 text-center text-green-400 font-semibold">HP</th>
+                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">Quality</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((row, i) => {
+                const { bg, border, text } = getIVColor(row.ivPct);
+                const { label: qualLabel, color: qualColor } = getIVLabel(row.ivPct);
+                const isHundo = row.a === 15 && row.d === 15 && row.h === 15;
+                return (
+                  <tr key={`${row.a}-${row.d}-${row.h}`}
+                    className="border-b transition-colors hover:bg-white/5"
+                    style={{ borderColor: 'rgba(255,255,255,0.05)', background: bg }}>
+                    <td className="px-3 py-2 text-gray-600">{i + 1}</td>
+                    <td className="px-3 py-2 text-center font-bold" style={{ color: text }}>
+                      {row.ivPct}%
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span className="font-mono font-semibold" style={{ color: row.a === 15 ? '#f87171' : row.a >= 13 ? '#fca5a5' : '#9ca3af' }}>{row.a}</span>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span className="font-mono font-semibold" style={{ color: row.d === 15 ? '#60a5fa' : row.d >= 13 ? '#93c5fd' : '#9ca3af' }}>{row.d}</span>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                      <span className="font-mono font-semibold" style={{ color: row.h === 15 ? '#34d399' : row.h >= 13 ? '#6ee7b7' : '#9ca3af' }}>{row.h}</span>
+                    </td>
+                    <td className="px-3 py-2 text-center font-bold text-white">{row.cp.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-center text-green-400 font-semibold">{row.hp}</td>
+                    <td className="px-3 py-2 text-center">
+                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={{ background: qualColor + '22', color: qualColor, border: `1px solid ${qualColor}44` }}>
+                        {isHundo ? '⭐ Perfect' : qualLabel}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length === 0 && (
+            <div className="py-10 text-center text-gray-600 text-sm">
+              No IV combinations match your filters
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Show more button */}
+      {showTop < allRows.length && (
+        <button onClick={() => setShowTop(t => t + 100)}
+          className="w-full py-2.5 glass rounded-xl text-gray-400 hover:text-white text-sm transition-colors hover:bg-white/10">
+          Show more ({allRows.length - showTop} remaining)
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ===================== MAIN POKEMON CARD =====================
 function PokemonCard({ pokemon, species, isShiny, is3D, onToggleShiny, onToggle3D }) {
   const goStats = getGoStats(pokemon);
@@ -920,6 +1147,7 @@ function App() {
   const tabs = [
     { id: 'info', label: 'Info', icon: '📋' },
     { id: 'cp', label: 'CP Calc', icon: '⚡' },
+    { id: 'iv', label: 'IV Chart', icon: '🧬' },
     { id: 'evo', label: 'Evolution', icon: '🔄' },
   ];
 
@@ -1025,6 +1253,9 @@ function App() {
                       )}
                       {activeTab === 'cp' && (
                         <CPCalculator pokemon={activePokemon} />
+                      )}
+                      {activeTab === 'iv' && (
+                        <IVChart pokemon={activePokemon} />
                       )}
                       {activeTab === 'evo' && (
                         <div>
