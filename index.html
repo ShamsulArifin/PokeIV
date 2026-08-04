@@ -160,13 +160,125 @@ async function fetchEvolutionChain(url) {
   return data;
 }
 
-async function fetchPokemonList(limit = 251) {
-  const key = `list_${limit}`;
-  if (cache[key]) return cache[key];
-  const res = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=0`);
+// Extract numeric dex ID from PokeAPI URL
+function idFromUrl(url) {
+  const m = url.match(/\/(\d+)\/$/);
+  return m ? parseInt(m[1]) : 0;
+}
+
+// Tag helpers for display labels in the dex grid
+function getFormTag(name) {
+  if (name.endsWith('-shadow'))    return { tag: 'Shadow',    color: '#7c3aed' };
+  if (name.endsWith('-purified'))  return { tag: 'Purified',  color: '#06b6d4' };
+  if (name.includes('-alola'))     return { tag: 'Alolan',    color: '#f59e0b' };
+  if (name.includes('-galar'))     return { tag: 'Galarian',  color: '#ec4899' };
+  if (name.includes('-hisui'))     return { tag: 'Hisuian',   color: '#84cc16' };
+  if (name.includes('-paldea'))    return { tag: 'Paldean',   color: '#f97316' };
+  if (name.includes('-mega'))      return { tag: 'Mega',      color: '#6366f1' };
+  if (name.includes('-gmax'))      return { tag: 'G-Max',     color: '#ef4444' };
+  if (name.includes('-primal'))    return { tag: 'Primal',    color: '#dc2626' };
+  if (name.includes('-origin'))    return { tag: 'Origin',    color: '#8b5cf6' };
+  if (name.includes('-sky'))       return { tag: 'Sky',       color: '#38bdf8' };
+  if (name.includes('-therian'))   return { tag: 'Therian',   color: '#10b981' };
+  if (name.includes('-black') || name.includes('-white')) return { tag: 'Alt', color: '#9ca3af' };
+  if (name.includes('-10') || name.includes('-50') || name.includes('-complete')) return { tag: 'Form', color: '#a78bfa' };
+  return null;
+}
+
+// Shadow & Purified: purely GO concepts, not in PokeAPI.
+// We generate virtual entries for every base Pokémon that appears in GO raids/Team GO Rocket.
+// Shadow/Purified use the same sprite as the base but we overlay a tint + badge.
+const SHADOW_IDS = [
+  1,2,3,4,5,6,7,8,9,25,27,28,37,38,41,42,50,51,52,53,
+  54,55,58,59,66,67,68,72,73,74,75,76,77,78,79,80,81,82,
+  88,89,93,94,100,101,109,110,111,112,113,114,115,116,117,
+  118,119,120,121,122,123,126,127,128,130,131,137,138,139,
+  140,141,142,143,147,148,149,152,153,154,155,156,157,158,
+  159,160,161,162,163,164,165,166,167,168,169,170,171,172,
+  173,174,175,176,177,178,179,180,181,182,183,184,185,186,
+  187,188,189,190,191,192,193,194,195,196,197,198,199,200,
+  201,202,203,204,205,206,207,208,209,210,211,212,213,214,
+  215,216,217,218,219,220,221,222,223,224,225,226,227,228,
+  229,230,231,232,233,234,235,236,237,238,239,240,241,242,
+  243,244,245,246,247,248,252,253,254,255,256,257,258,259,
+  260,261,262,263,264,265,266,267,268,269,270,271,272,273,
+  274,275,276,277,278,279,280,281,282,283,284,285,286,287,
+  288,289,290,291,292,293,294,295,296,297,298,299,300,301,
+  302,303,304,305,306,307,308,309,310,311,312,313,314,315,
+  316,317,318,319,320,321,322,323,324,325,326,327,328,329,
+  330,331,332,333,334,335,336,337,338,339,340,341,342,343,
+  344,345,346,347,348,349,350
+];
+
+async function fetchPokemonList() {
+  if (cache['full_list']) return cache['full_list'];
+
+  // Fetch all base Pokémon (up to 1025 species + alternate forms PokeAPI knows)
+  const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=2000&offset=0');
   const data = await res.json();
-  cache[key] = data.results.map((p, i) => ({ name: p.name, id: i + 1 }));
-  return cache[key];
+
+  const list = [];
+
+  data.results.forEach(p => {
+    const id = idFromUrl(p.url);
+    list.push({
+      name: p.name,
+      id,
+      displayName: formatDisplayName(p.name),
+      formTag: getFormTag(p.name),
+      spriteId: id, // numeric ID used for sprite fallback
+      isVirtual: false,
+    });
+  });
+
+  // Inject Shadow & Purified virtual entries
+  // We add them after the real list so they appear in their own section
+  SHADOW_IDS.forEach(id => {
+    const base = list.find(p => p.id === id && !p.name.includes('-'));
+    if (!base) return;
+    list.push({
+      name: base.name + '-shadow',
+      id,
+      displayName: formatDisplayName(base.name) + ' (Shadow)',
+      formTag: { tag: 'Shadow', color: '#7c3aed' },
+      spriteId: id,
+      isVirtual: true,
+      baseName: base.name,
+      shadowType: 'shadow',
+    });
+    list.push({
+      name: base.name + '-purified',
+      id,
+      displayName: formatDisplayName(base.name) + ' (Purified)',
+      formTag: { tag: 'Purified', color: '#06b6d4' },
+      spriteId: id,
+      isVirtual: true,
+      baseName: base.name,
+      shadowType: 'purified',
+    });
+  });
+
+  cache['full_list'] = list;
+  return list;
+}
+
+function formatDisplayName(name) {
+  return name
+    .replace(/-mega-[xy]$/, m => ' Mega' + m.slice(-2).toUpperCase())
+    .replace(/-mega$/, ' Mega')
+    .replace(/-gmax$/, ' G-Max')
+    .replace(/-alola$/, ' (Alolan)')
+    .replace(/-galar$/, ' (Galarian)')
+    .replace(/-hisui$/, ' (Hisuian)')
+    .replace(/-paldea$/, ' (Paldean)')
+    .replace(/-primal$/, ' (Primal)')
+    .replace(/-origin$/, ' (Origin)')
+    .replace(/-therian$/, ' (Therian)')
+    .replace(/-shadow$/, '')
+    .replace(/-purified$/, '')
+    .split('-')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 function getGoStats(pokemon) {
@@ -281,15 +393,17 @@ function SearchBar({ onSelect, placeholder = "Search Pokémon by name or ID..." 
   const ref = React.useRef(null);
 
   React.useEffect(() => {
-    fetchPokemonList(905).then(setAllPokemon).catch(() => {});
+    fetchPokemonList().then(setAllPokemon).catch(() => {});
   }, []);
 
   React.useEffect(() => {
     if (!query.trim()) { setResults([]); setOpen(false); return; }
     const q = query.toLowerCase().trim();
     const filtered = allPokemon.filter(p =>
-      p.name.includes(q) || String(p.id).includes(q)
-    ).slice(0, 12);
+      p.name.includes(q) ||
+      p.displayName.toLowerCase().includes(q) ||
+      String(p.id).includes(q)
+    ).slice(0, 14);
     setResults(filtered);
     setOpen(filtered.length > 0);
   }, [query, allPokemon]);
@@ -327,12 +441,19 @@ function SearchBar({ onSelect, placeholder = "Search Pokémon by name or ID..." 
       {open && (
         <div className="absolute top-full mt-2 w-full glass-dark rounded-xl overflow-hidden search-dropdown animate-fade-in shadow-2xl">
           {results.map(p => (
-            <button key={p.id} onClick={() => handleSelect(p)}
+            <button key={p.name} onClick={() => handleSelect(p)}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/10 transition-colors text-left">
-              <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`}
-                width="32" height="32" className="object-contain" alt="" />
-              <span className="text-white text-sm font-medium">{capitalize(p.name)}</span>
-              <span className="ml-auto text-gray-500 text-xs">#{padId(p.id)}</span>
+              <div className="relative shrink-0">
+                <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId || p.id}.png`}
+                  width="32" height="32" className="object-contain" alt=""
+                  style={p.shadowType === 'shadow' ? {filter:'brightness(0) saturate(100%) invert(20%) sepia(80%) saturate(400%) hue-rotate(240deg) brightness(0.7)'} :
+                         p.shadowType === 'purified' ? {filter:'brightness(1.1) saturate(0.4)'} : {}} />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-white text-sm font-medium truncate">{p.displayName}</span>
+                {p.formTag && <span className="text-xs font-semibold" style={{color: p.formTag.color}}>{p.formTag.tag}</span>}
+              </div>
+              <span className="ml-auto text-gray-500 text-xs shrink-0">#{padId(p.id)}</span>
             </button>
           ))}
         </div>
@@ -753,62 +874,188 @@ function ComparePanel({ isShiny, is3D }) {
 }
 
 // ===================== POKEDEX GRID =====================
+// Generation ranges for grouping
+const GENERATIONS = [
+  { label: 'Gen I',   min: 1,    max: 151  },
+  { label: 'Gen II',  min: 152,  max: 251  },
+  { label: 'Gen III', min: 252,  max: 386  },
+  { label: 'Gen IV',  min: 387,  max: 493  },
+  { label: 'Gen V',   min: 494,  max: 649  },
+  { label: 'Gen VI',  min: 650,  max: 721  },
+  { label: 'Gen VII', min: 722,  max: 809  },
+  { label: 'Gen VIII',min: 810,  max: 905  },
+  { label: 'Gen IX',  min: 906,  max: 1025 },
+  { label: 'Forms',   min: 1026, max: 99999 },
+];
+
+function FormTag({ tag, color }) {
+  return (
+    <span className="text-xs font-bold px-1.5 py-0.5 rounded-md leading-none"
+      style={{ background: color + '33', color, border: `1px solid ${color}55` }}>
+      {tag}
+    </span>
+  );
+}
+
 function PokedexGrid({ onSelect, activeName }) {
-  const [pokemon, setPokemon] = React.useState([]);
+  const [allPokemon, setAllPokemon] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
-  const [page, setPage] = React.useState(0);
   const [filter, setFilter] = React.useState('');
-  const [typeFilter, setTypeFilter] = React.useState('');
-  const PER_PAGE = 40;
+  const [genFilter, setGenFilter] = React.useState('all');
+  const [formFilter, setFormFilter] = React.useState('all'); // all | base | alolan | galarian | hisuian | paldean | mega | shadow | purified
+  const [page, setPage] = React.useState(0);
+  const PER_PAGE = 48;
 
   React.useEffect(() => {
-    fetchPokemonList(905).then(list => { setPokemon(list); setLoading(false); }).catch(() => setLoading(false));
+    fetchPokemonList().then(list => { setAllPokemon(list); setLoading(false); }).catch(() => setLoading(false));
   }, []);
 
   const filtered = React.useMemo(() => {
-    if (!filter && !typeFilter) return pokemon;
-    return pokemon.filter(p => {
-      const matchName = !filter || p.name.includes(filter.toLowerCase()) || String(p.id).includes(filter);
-      return matchName;
-    });
-  }, [pokemon, filter, typeFilter]);
+    let list = allPokemon;
 
-  const pages = Math.ceil(filtered.length / PER_PAGE);
-  const visible = filtered.slice(page * PER_PAGE, (page+1) * PER_PAGE);
+    // Text filter
+    if (filter.trim()) {
+      const q = filter.toLowerCase().trim();
+      list = list.filter(p =>
+        p.name.includes(q) ||
+        p.displayName.toLowerCase().includes(q) ||
+        String(p.id).startsWith(q)
+      );
+    }
+
+    // Generation filter
+    if (genFilter !== 'all') {
+      const gen = GENERATIONS.find(g => g.label === genFilter);
+      if (gen) list = list.filter(p => p.id >= gen.min && p.id <= gen.max);
+    }
+
+    // Form filter
+    if (formFilter === 'base') {
+      list = list.filter(p => !p.isVirtual && !p.formTag);
+    } else if (formFilter === 'shadow') {
+      list = list.filter(p => p.shadowType === 'shadow');
+    } else if (formFilter === 'purified') {
+      list = list.filter(p => p.shadowType === 'purified');
+    } else if (formFilter === 'alolan') {
+      list = list.filter(p => p.name.includes('-alola'));
+    } else if (formFilter === 'galarian') {
+      list = list.filter(p => p.name.includes('-galar'));
+    } else if (formFilter === 'hisuian') {
+      list = list.filter(p => p.name.includes('-hisui'));
+    } else if (formFilter === 'paldean') {
+      list = list.filter(p => p.name.includes('-paldea'));
+    } else if (formFilter === 'mega') {
+      list = list.filter(p => p.name.includes('-mega') || p.name.includes('-primal'));
+    } else if (formFilter === 'forms') {
+      list = list.filter(p => p.formTag && !p.isVirtual);
+    }
+
+    return list;
+  }, [allPokemon, filter, genFilter, formFilter]);
+
+  // Reset page on filter change
+  React.useEffect(() => { setPage(0); }, [filter, genFilter, formFilter]);
+
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+
+  const formFilters = [
+    { id: 'all',      label: 'All' },
+    { id: 'base',     label: 'Base' },
+    { id: 'alolan',   label: 'Alolan',   color: '#f59e0b' },
+    { id: 'galarian', label: 'Galarian', color: '#ec4899' },
+    { id: 'hisuian',  label: 'Hisuian',  color: '#84cc16' },
+    { id: 'paldean',  label: 'Paldean',  color: '#f97316' },
+    { id: 'mega',     label: 'Mega',     color: '#6366f1' },
+    { id: 'forms',    label: 'Forms',    color: '#a78bfa' },
+    { id: 'shadow',   label: '👻 Shadow',   color: '#7c3aed' },
+    { id: 'purified', label: '✨ Purified',  color: '#06b6d4' },
+  ];
 
   return (
     <div className="space-y-3">
+      {/* Search */}
       <div className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
         </div>
-        <input value={filter} onChange={e => { setFilter(e.target.value); setPage(0); }}
-          placeholder="Filter..." className="w-full pl-9 pr-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+        <input value={filter} onChange={e => setFilter(e.target.value)}
+          placeholder="Filter by name or #..." className="w-full pl-8 pr-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+        {filter && (
+          <button onClick={() => setFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400">✕</button>
+        )}
       </div>
+
+      {/* Generation tabs */}
+      <div className="flex gap-1 flex-wrap">
+        <button onClick={() => setGenFilter('all')}
+          className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${genFilter==='all' ? 'bg-indigo-600 text-white' : 'glass text-gray-500 hover:text-white'}`}>
+          All
+        </button>
+        {GENERATIONS.map(g => (
+          <button key={g.label} onClick={() => setGenFilter(g.label)}
+            className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${genFilter===g.label ? 'bg-indigo-600 text-white' : 'glass text-gray-500 hover:text-white'}`}>
+            {g.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Form filters */}
+      <div className="flex gap-1 flex-wrap">
+        {formFilters.map(f => (
+          <button key={f.id} onClick={() => setFormFilter(f.id)}
+            className="px-2 py-0.5 rounded-md text-xs font-semibold transition-all"
+            style={formFilter === f.id
+              ? { background: (f.color || '#6366f1') + '33', color: f.color || '#818cf8', border: `1px solid ${f.color || '#6366f1'}55` }
+              : { background: 'rgba(255,255,255,0.06)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.1)' }}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Count */}
+      <p className="text-gray-600 text-xs">{filtered.length.toLocaleString()} Pokémon</p>
 
       {loading ? (
         <div className="flex justify-center py-8"><LoadingSpinner /></div>
       ) : (
         <>
           <div className="pokedex-grid max-h-[480px] overflow-y-auto pr-1">
-            {visible.map(p => (
-              <button key={p.id} onClick={() => onSelect(p.name)}
-                className={`card-hover glass rounded-xl p-2 flex flex-col items-center gap-1 transition-all duration-200 ${activeName === p.name ? 'ring-2 ring-indigo-500 bg-indigo-500/20' : 'hover:bg-white/10'}`}>
-                <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`}
-                  width="56" height="56" className="object-contain" alt={p.name} loading="lazy" />
-                <span className="text-gray-300 text-xs font-medium leading-tight text-center">{capitalize(p.name)}</span>
-                <span className="text-gray-600 text-xs">#{padId(p.id)}</span>
-              </button>
-            ))}
+            {visible.map(p => {
+              const spriteFilter = p.shadowType === 'shadow'
+                ? 'brightness(0.55) saturate(2) hue-rotate(245deg)'
+                : p.shadowType === 'purified'
+                ? 'brightness(1.1) saturate(0.35)'
+                : undefined;
+              const isActive = activeName === p.name;
+              return (
+                <button key={p.name} onClick={() => onSelect(p.name)}
+                  className={`card-hover glass rounded-xl p-2 flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'ring-2 ring-indigo-500 bg-indigo-500/20' : 'hover:bg-white/10'}`}>
+                  <div style={{ filter: spriteFilter }}>
+                    <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId || p.id}.png`}
+                      width="52" height="52" className="object-contain" alt={p.displayName} loading="lazy" />
+                  </div>
+                  <span className="text-gray-300 text-xs font-medium leading-tight text-center line-clamp-2">{p.displayName}</span>
+                  <div className="flex flex-wrap gap-0.5 justify-center">
+                    <span className="text-gray-600 text-xs">#{padId(p.id)}</span>
+                    {p.formTag && <FormTag tag={p.formTag.tag} color={p.formTag.color} />}
+                  </div>
+                </button>
+              );
+            })}
+            {visible.length === 0 && (
+              <div className="col-span-full py-8 text-center text-gray-600 text-sm">No Pokémon match your filters</div>
+            )}
           </div>
-          {pages > 1 && (
+
+          {totalPages > 1 && (
             <div className="flex items-center justify-between gap-2">
               <button onClick={() => setPage(p => Math.max(0, p-1))} disabled={page===0}
                 className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">← Prev</button>
-              <span className="text-gray-500 text-xs">{page+1} / {pages}</span>
-              <button onClick={() => setPage(p => Math.min(pages-1, p+1))} disabled={page===pages-1}
+              <span className="text-gray-500 text-xs">{page+1} / {totalPages}</span>
+              <button onClick={() => setPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1}
                 className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">Next →</button>
             </div>
           )}
@@ -1046,20 +1293,49 @@ function IVChart({ pokemon }) {
 }
 
 // ===================== MAIN POKEMON CARD =====================
-function PokemonCard({ pokemon, species, isShiny, is3D, onToggleShiny, onToggle3D }) {
+function PokemonCard({ pokemon, species, isShiny, is3D, shadowType, onToggleShiny, onToggle3D }) {
   const goStats = getGoStats(pokemon);
   const types = pokemon.types.map(t => t.type.name);
   const mainType = types[0];
   const typeColor = TYPE_COLORS[mainType] || '#6366f1';
 
+  const shadowColor = shadowType === 'shadow' ? '#7c3aed' : shadowType === 'purified' ? '#06b6d4' : null;
+  const shadowLabel = shadowType === 'shadow' ? '👻 Shadow' : shadowType === 'purified' ? '✨ Purified' : null;
+
+  // Shadow Pokémon get +20% ATK, -20% DEF in GO raids; Purified get +2 to all IVs floor
+  const displayAtk  = shadowType === 'shadow'   ? Math.round(goStats.attack  * 1.2) : goStats.attack;
+  const displayDef  = shadowType === 'shadow'   ? Math.round(goStats.defense * 0.8) : goStats.defense;
+  const shadowNote  = shadowType === 'shadow'   ? '(×1.2 ATK / ×0.8 DEF in raids)' :
+                      shadowType === 'purified' ? '(+2 IV floor on all stats when purified)' : null;
+
+  const spriteFilter = shadowType === 'shadow'
+    ? 'brightness(0.6) saturate(2) hue-rotate(240deg)'
+    : shadowType === 'purified'
+    ? 'brightness(1.15) saturate(0.35) contrast(1.1)'
+    : undefined;
+
   return (
-    <div className="glass-dark rounded-2xl overflow-hidden animate-slide-up relative" style={{ border: `1px solid ${typeColor}33` }}>
+    <div className="glass-dark rounded-2xl overflow-hidden animate-slide-up relative"
+      style={{ border: `1px solid ${shadowColor ? shadowColor + '55' : typeColor + '33'}` }}>
+      {/* Shadow/Purified banner */}
+      {shadowLabel && (
+        <div className="px-5 pt-3 pb-0">
+          <div className="rounded-lg px-3 py-1.5 flex items-center gap-2 text-xs font-bold"
+            style={{ background: shadowColor + '22', border: `1px solid ${shadowColor}44`, color: shadowColor }}>
+            <span>{shadowLabel}</span>
+            {shadowNote && <span className="text-xs font-normal opacity-70">{shadowNote}</span>}
+          </div>
+        </div>
+      )}
       {/* Header gradient */}
       <div className="relative p-5 pb-2" style={{ background: `linear-gradient(135deg, ${typeColor}22, transparent)` }}>
         <div className="flex justify-between items-start">
           <div>
             <p className="text-gray-500 text-xs font-medium">#{padId(pokemon.id)}</p>
-            <h2 className="text-white text-2xl font-black mt-0.5">{capitalize(pokemon.name)}</h2>
+            <h2 className="text-white text-2xl font-black mt-0.5">
+              {formatDisplayName(pokemon.name)}
+              {shadowLabel && <span className="ml-2 text-base font-semibold" style={{color: shadowColor}}>{shadowLabel}</span>}
+            </h2>
             {species?.genera?.find(g => g.language.name === 'en') && (
               <p className="text-gray-500 text-xs">{species.genera.find(g => g.language.name === 'en').genus}</p>
             )}
@@ -1076,13 +1352,18 @@ function PokemonCard({ pokemon, species, isShiny, is3D, onToggleShiny, onToggle3
         {/* Sprite */}
         <div className="flex justify-center mt-2">
           <div className="relative">
-            {/* Background glow */}
-            <div className="absolute inset-0 rounded-full blur-3xl opacity-20" style={{ background: typeColor }} />
-            <PokemonImage pokemon={pokemon} isShiny={isShiny} is3D={is3D} size={160} className="relative z-10" />
+            <div className="absolute inset-0 rounded-full blur-3xl opacity-20"
+              style={{ background: shadowColor || typeColor }} />
+            <div style={{ filter: spriteFilter }}>
+              <PokemonImage pokemon={pokemon} isShiny={isShiny} is3D={is3D} size={160} className="relative z-10" />
+            </div>
+            {shadowType === 'shadow' && (
+              <div className="absolute inset-0 rounded-full pointer-events-none"
+                style={{ background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)' }} />
+            )}
           </div>
         </div>
 
-        {/* Shiny indicator */}
         {isShiny && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2">
             <span className="text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-full px-3 py-0.5 font-semibold">✨ Shiny</span>
@@ -1093,7 +1374,7 @@ function PokemonCard({ pokemon, species, isShiny, is3D, onToggleShiny, onToggle3
       {/* CP Preview */}
       <div className="px-5 pb-4">
         <div className="grid grid-cols-3 gap-2 text-center mt-2">
-          {[['GO ATK', goStats.attack, '#f87171'],['GO DEF', goStats.defense, '#60a5fa'],['STA', goStats.hp, '#34d399']].map(([l,v,c]) => (
+          {[['GO ATK', displayAtk, '#f87171'],['GO DEF', displayDef, '#60a5fa'],['STA', goStats.hp, '#34d399']].map(([l,v,c]) => (
             <div key={l} className="rounded-lg p-2" style={{ background: c+'15', border: `1px solid ${c}33` }}>
               <p className="text-xs font-semibold" style={{ color: c }}>{l}</p>
               <p className="text-white font-bold text-lg">{v}</p>
@@ -1113,6 +1394,7 @@ function PokemonCard({ pokemon, species, isShiny, is3D, onToggleShiny, onToggle3
 function App() {
   const [activePokemon, setActivePokemon] = React.useState(null);
   const [activeSpecies, setActiveSpecies] = React.useState(null);
+  const [activeShadowType, setActiveShadowType] = React.useState(null); // null | 'shadow' | 'purified'
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [isShiny, setIsShiny] = React.useState(false);
@@ -1126,16 +1408,25 @@ function App() {
     setLoading(true);
     setError(null);
     setIsShiny(false);
+
+    // Strip shadow/purified suffix to get the real API name
+    let apiName = String(nameOrId).toLowerCase();
+    let shadowType = null;
+    if (apiName.endsWith('-shadow'))   { shadowType = 'shadow';   apiName = apiName.replace(/-shadow$/, ''); }
+    if (apiName.endsWith('-purified')) { shadowType = 'purified'; apiName = apiName.replace(/-purified$/, ''); }
+
     try {
-      const poke = await fetchPokemon(nameOrId);
+      const poke = await fetchPokemon(apiName);
       setActivePokemon(poke);
+      setActiveShadowType(shadowType);
       setActiveTab('info');
-      const sp = await fetchSpecies(poke.name).catch(() => null);
+      const sp = await fetchSpecies(poke.species?.name || poke.name).catch(() => null);
       setActiveSpecies(sp);
     } catch (e) {
       setError(`Could not find "${nameOrId}". Try a different name or ID.`);
       setActivePokemon(null);
       setActiveSpecies(null);
+      setActiveShadowType(null);
     } finally {
       setLoading(false);
     }
@@ -1233,6 +1524,7 @@ function App() {
                   <PokemonCard
                     pokemon={activePokemon} species={activeSpecies}
                     isShiny={isShiny} is3D={is3D}
+                    shadowType={activeShadowType}
                     onToggleShiny={setIsShiny} onToggle3D={setIs3D}
                   />
 
