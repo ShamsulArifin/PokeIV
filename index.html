@@ -19,9 +19,6 @@
     ::-webkit-scrollbar-thumb:hover { background: #5555aa; }
     .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
     .glass-dark { background: rgba(10,10,20,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); }
-    .glow-red { box-shadow: 0 0 20px rgba(239,68,68,0.3); }
-    .glow-blue { box-shadow: 0 0 20px rgba(99,102,241,0.3); }
-    .glow-gold { box-shadow: 0 0 20px rgba(251,191,36,0.4); }
     .card-hover { transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
     .card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
     .type-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -34,13 +31,12 @@
     @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     .pokemon-img { filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5)); transition: transform 0.3s ease; }
     .pokemon-img:hover { transform: scale(1.05) rotate(-2deg); }
-    .shiny-glow { filter: drop-shadow(0 0 16px rgba(251,191,36,0.8)) drop-shadow(0 0 6px rgba(251,191,36,0.5)); }
-    .shadow-glow { filter: drop-shadow(0 0 14px rgba(109,40,217,0.9)) drop-shadow(0 0 6px rgba(88,28,235,0.7)); }
-    .purified-glow { filter: drop-shadow(0 0 14px rgba(6,182,212,0.7)) drop-shadow(0 0 6px rgba(6,182,212,0.4)); }
+    .shiny-glow   { filter: drop-shadow(0 0 16px rgba(251,191,36,0.85)) drop-shadow(0 0 6px rgba(251,191,36,0.5)); }
+    .shadow-glow  { filter: drop-shadow(0 0 14px rgba(109,40,217,0.9))  drop-shadow(0 0 6px rgba(88,28,235,0.7)); }
+    .purified-glow{ filter: drop-shadow(0 0 14px rgba(6,182,212,0.75))  drop-shadow(0 0 6px rgba(6,182,212,0.4)); }
     .tab-active { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
     .stat-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
     .stat-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
-    .evo-line::after { content: ''; position: absolute; top: 50%; left: 100%; width: 40px; height: 2px; background: linear-gradient(90deg, rgba(99,102,241,0.6), transparent); transform: translateY(-50%); }
     .cp-display { background: linear-gradient(135deg, #1e1b4b, #312e81); border: 1px solid rgba(99,102,241,0.4); }
     .search-dropdown { z-index: 1000; }
     .pokedex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
@@ -51,7 +47,7 @@
 <div id="root"></div>
 <script type="text/babel">
 
-// ===================== CONSTANTS =====================
+// ── CONSTANTS ─────────────────────────────────────────────────────────────
 const CP_MULTIPLIERS = {
   1:0.094,1.5:0.135137432,2:0.16639787,2.5:0.192650919,3:0.21573247,3.5:0.236572661,
   4:0.25572005,4.5:0.273530381,5:0.29024988,5.5:0.306057377,6:0.3210876,6.5:0.335445036,
@@ -80,7 +76,8 @@ const TYPE_COLORS = {
 };
 
 const TYPE_EFFECTIVENESS = {
-  normal:{fighting:2,ghost:0},fire:{water:2,ground:2,rock:2,fire:0.5,grass:0.5,ice:0.5,bug:0.5,steel:0.5,fairy:0.5},
+  normal:{fighting:2,ghost:0},
+  fire:{water:2,ground:2,rock:2,fire:0.5,grass:0.5,ice:0.5,bug:0.5,steel:0.5,fairy:0.5},
   water:{electric:2,grass:2,fire:0.5,water:0.5,ice:0.5,steel:0.5},
   electric:{ground:2,electric:0.5,flying:0.5,steel:0.5},
   grass:{fire:2,ice:2,poison:2,flying:2,bug:2,water:0.5,electric:0.5,grass:0.5,ground:0.5},
@@ -99,290 +96,389 @@ const TYPE_EFFECTIVENESS = {
   fairy:{poison:2,steel:2,fighting:0.5,bug:0.5,dark:0.5,dragon:0}
 };
 
-// ===================== UTILITY FUNCTIONS =====================
-function calcCP(baseAtk, baseDef, baseHP, atkIV, defIV, hpIV, level) {
-  const cpm = CP_MULTIPLIERS[level] || 0.79030001;
-  const cp = Math.floor((baseAtk + atkIV) * Math.pow(baseDef + defIV, 0.5) * Math.pow(baseHP + hpIV, 0.5) * Math.pow(cpm, 2) / 10);
-  return Math.max(10, cp);
-}
+// Raid encounter levels & IV floors
+const ENCOUNTER_TYPES = {
+  raid:       { label:'Raid',              level:20, boostedLevel:25, floor:10, hasBoosted:true  },
+  shadowRaid: { label:'Shadow Raid',       level:8,  boostedLevel:13, floor:6,  hasBoosted:true  },
+  research:   { label:'Research / GO Pass',level:15, boostedLevel:null, floor:10, hasBoosted:false },
+  egg:        { label:'Egg Hatch',         level:20, boostedLevel:null, floor:10, hasBoosted:false },
+  wild:       { label:'Wild Catch',        level:1,  boostedLevel:null, floor:0,  hasBoosted:false },
+  lucky:      { label:'Lucky Trade',       level:1,  boostedLevel:null, floor:12, hasBoosted:false },
+};
 
-function calcHP(baseHP, hpIV, level) {
-  const cpm = CP_MULTIPLIERS[level] || 0.79030001;
-  return Math.max(10, Math.floor((baseHP + hpIV) * cpm));
+const WEATHER_BOOSTS = {
+  sunny:       { label:'☀️ Sunny/Clear',    types:['fire','grass','ground'] },
+  rainy:       { label:'🌧️ Rainy',          types:['water','electric','bug'] },
+  partlyCloudy:{ label:'⛅ Partly Cloudy', types:['normal','rock'] },
+  cloudy:      { label:'☁️ Cloudy',         types:['fairy','fighting','poison'] },
+  windy:       { label:'💨 Windy',          types:['dragon','flying','psychic'] },
+  snowy:       { label:'❄️ Snowy',          types:['ice','steel'] },
+  foggy:       { label:'🌫️ Foggy',          types:['dark','ghost'] },
+};
+
+const TOP_COUNTERS = [
+  {name:'mewtwo',      types:['psychic'],         move:'psychic'},
+  {name:'rayquaza',    types:['dragon','flying'],  move:'dragon'},
+  {name:'garchomp',    types:['dragon','ground'],  move:'dragon'},
+  {name:'dragonite',   types:['dragon','flying'],  move:'dragon'},
+  {name:'salamence',   types:['dragon','flying'],  move:'dragon'},
+  {name:'dialga',      types:['steel','dragon'],   move:'dragon'},
+  {name:'palkia',      types:['water','dragon'],   move:'dragon'},
+  {name:'zekrom',      types:['dragon','electric'],move:'electric'},
+  {name:'reshiram',    types:['dragon','fire'],    move:'fire'},
+  {name:'kyurem',      types:['dragon','ice'],     move:'ice'},
+  {name:'tyranitar',   types:['rock','dark'],      move:'rock'},
+  {name:'rampardos',   types:['rock'],             move:'rock'},
+  {name:'rhyperior',   types:['ground','rock'],    move:'rock'},
+  {name:'terrakion',   types:['rock','fighting'],  move:'rock'},
+  {name:'aerodactyl',  types:['rock','flying'],    move:'rock'},
+  {name:'nihilego',    types:['rock','poison'],    move:'rock'},
+  {name:'machamp',     types:['fighting'],         move:'fighting'},
+  {name:'lucario',     types:['fighting','steel'], move:'fighting'},
+  {name:'conkeldurr',  types:['fighting'],         move:'fighting'},
+  {name:'hariyama',    types:['fighting'],         move:'fighting'},
+  {name:'breloom',     types:['grass','fighting'], move:'fighting'},
+  {name:'blaziken',    types:['fire','fighting'],  move:'fighting'},
+  {name:'keldeo',      types:['water','fighting'], move:'fighting'},
+  {name:'chandelure',  types:['ghost','fire'],     move:'ghost'},
+  {name:'gengar',      types:['ghost','poison'],   move:'ghost'},
+  {name:'giratina-origin', types:['ghost','dragon'],move:'ghost'},
+  {name:'darkrai',     types:['dark'],             move:'dark'},
+  {name:'weavile',     types:['dark','ice'],       move:'dark'},
+  {name:'hydreigon',   types:['dark','dragon'],    move:'dark'},
+  {name:'yveltal',     types:['dark','flying'],    move:'dark'},
+  {name:'kyogre',      types:['water'],            move:'water'},
+  {name:'swampert',    types:['water','ground'],   move:'water'},
+  {name:'greninja',    types:['water','dark'],     move:'water'},
+  {name:'feraligatr',  types:['water'],            move:'water'},
+  {name:'kingler',     types:['water'],            move:'water'},
+  {name:'raikou',      types:['electric'],         move:'electric'},
+  {name:'electivire',  types:['electric'],         move:'electric'},
+  {name:'zapdos',      types:['electric','flying'],move:'electric'},
+  {name:'magnezone',   types:['electric','steel'], move:'electric'},
+  {name:'moltres',     types:['fire','flying'],    move:'fire'},
+  {name:'charizard',   types:['fire','flying'],    move:'fire'},
+  {name:'entei',       types:['fire'],             move:'fire'},
+  {name:'flareon',     types:['fire'],             move:'fire'},
+  {name:'mamoswine',   types:['ice','ground'],     move:'ice'},
+  {name:'glaceon',     types:['ice'],              move:'ice'},
+  {name:'articuno',    types:['ice','flying'],     move:'ice'},
+  {name:'roserade',    types:['grass','poison'],   move:'grass'},
+  {name:'tangrowth',   types:['grass'],            move:'grass'},
+  {name:'leafeon',     types:['grass'],            move:'grass'},
+  {name:'venusaur',    types:['grass','poison'],   move:'grass'},
+  {name:'excadrill',   types:['ground','steel'],   move:'ground'},
+  {name:'groudon',     types:['ground'],           move:'ground'},
+  {name:'landorus-therian',types:['ground','flying'],move:'ground'},
+  {name:'metagross',   types:['steel','psychic'],  move:'steel'},
+  {name:'melmetal',    types:['steel'],            move:'steel'},
+  {name:'genesect',    types:['bug','steel'],      move:'bug'},
+  {name:'scizor',      types:['bug','steel'],      move:'bug'},
+  {name:'escavalier',  types:['bug','steel'],      move:'bug'},
+  {name:'alakazam',    types:['psychic'],          move:'psychic'},
+  {name:'espeon',      types:['psychic'],          move:'psychic'},
+  {name:'latios',      types:['dragon','psychic'], move:'psychic'},
+  {name:'togekiss',    types:['fairy','flying'],   move:'fairy'},
+  {name:'gardevoir',   types:['psychic','fairy'],  move:'fairy'},
+  {name:'sylveon',     types:['fairy'],            move:'fairy'},
+  {name:'xerneas',     types:['fairy'],            move:'fairy'},
+  {name:'nidoking',    types:['poison','ground'],  move:'poison'},
+  {name:'victreebel',  types:['grass','poison'],   move:'poison'},
+  {name:'staraptor',   types:['normal','flying'],  move:'flying'},
+  {name:'honchkrow',   types:['dark','flying'],    move:'flying'},
+];
+
+const GENERATION_RANGES = [
+  {label:'Gen I',   min:1,   max:151},
+  {label:'Gen II',  min:152, max:251},
+  {label:'Gen III', min:252, max:386},
+  {label:'Gen IV',  min:387, max:493},
+  {label:'Gen V',   min:494, max:649},
+  {label:'Gen VI',  min:650, max:721},
+  {label:'Gen VII', min:722, max:809},
+  {label:'Gen VIII',min:810, max:905},
+  {label:'Gen IX',  min:906, max:1025},
+  {label:'Forms',   min:1026,max:99999},
+];
+
+const SHADOW_IDS = [
+  1,2,3,4,5,6,7,8,9,25,27,28,37,38,41,42,50,51,52,53,54,55,58,59,66,67,68,72,73,
+  74,75,76,77,78,79,80,81,82,88,89,93,94,100,101,109,110,111,112,113,114,115,116,
+  117,118,119,120,121,122,123,126,127,128,130,131,137,138,139,140,141,142,143,147,
+  148,149,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,
+  170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,
+  190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,
+  210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,
+  230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,252,
+  253,254,255,256,257,258,259,260,280,281,282,299,304,305,306,309,310,328,329,330,
+  333,334,349,350
+];
+
+// ── UTILITIES ─────────────────────────────────────────────────────────────
+function calcCP(atk, def, hp, aIV, dIV, hIV, lv) {
+  const m = CP_MULTIPLIERS[lv] || 0.79030001;
+  return Math.max(10, Math.floor((atk+aIV)*Math.pow(def+dIV,0.5)*Math.pow(hp+hIV,0.5)*m*m/10));
+}
+function calcHP(hp, hIV, lv) {
+  return Math.max(10, Math.floor((hp+hIV)*(CP_MULTIPLIERS[lv]||0.79030001)));
+}
+function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
+function padId(id){ return String(id).padStart(4,'0'); }
+
+function getGoStats(pokemon) {
+  const s = {};
+  pokemon.stats.forEach(x => { s[x.stat.name] = x.base_stat; });
+  return {
+    attack:  Math.max(1, Math.round((s['attack']+s['special-attack'])*0.875 + s['speed']*0.125)),
+    defense: Math.max(1, Math.round((s['defense']+s['special-defense'])*0.875 + s['speed']*0.125)),
+    hp:      Math.max(1, Math.floor(s['hp']*1.75+50)),
+    rawStats: s,
+  };
 }
 
 function getTypeWeaknesses(types) {
-  const effectiveness = {};
+  const eff = {};
   types.forEach(type => {
-    const defMap = TYPE_EFFECTIVENESS[type] || {};
-    Object.entries(defMap).forEach(([attType, mult]) => {
-      effectiveness[attType] = (effectiveness[attType] || 1) * mult;
+    Object.entries(TYPE_EFFECTIVENESS[type]||{}).forEach(([at,m]) => {
+      eff[at] = (eff[at]||1)*m;
     });
   });
-  const weaknesses = [], resistances = [], immunities = [];
-  Object.entries(effectiveness).forEach(([type, mult]) => {
-    if (mult >= 2) weaknesses.push({type, mult});
-    else if (mult === 0) immunities.push({type, mult});
-    else if (mult < 1) resistances.push({type, mult});
+  const weak=[], resist=[], immune=[];
+  Object.entries(eff).forEach(([t,m]) => {
+    if(m>=2) weak.push({type:t,mult:m});
+    else if(m===0) immune.push({type:t});
+    else if(m<1) resist.push({type:t,mult:m});
   });
-  return { weaknesses, resistances, immunities };
+  return {weak, resist, immune};
 }
 
-function capitalize(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
-function padId(id) { return String(id).padStart(4, '0'); }
-
-// ===================== API HELPERS =====================
-const cache = {};
-async function fetchPokemon(nameOrId) {
-  const key = String(nameOrId).toLowerCase();
-  if (cache[key]) return cache[key];
-  const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${key}`);
-  if (!res.ok) throw new Error('Not found');
-  const data = await res.json();
-  cache[key] = data;
-  return data;
+function getWeatherForTypes(types) {
+  return Object.entries(WEATHER_BOOSTS)
+    .filter(([,w]) => types.some(t => w.types.includes(t)))
+    .map(([,w]) => w.label);
 }
 
-async function fetchSpecies(nameOrId) {
-  const key = `species_${nameOrId}`;
-  if (cache[key]) return cache[key];
-  const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${nameOrId}`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  cache[key] = data;
-  return data;
+function typeEffVs(attackType, defTypes) {
+  let m=1;
+  defTypes.forEach(dt => { m *= (TYPE_EFFECTIVENESS[dt]||{})[attackType]??1; });
+  return m;
 }
 
-async function fetchEvolutionChain(url) {
-  if (cache[url]) return cache[url];
-  const res = await fetch(url);
-  if (!res.ok) return null;
-  const data = await res.json();
-  cache[url] = data;
-  return data;
+function scoredCounters(defTypes) {
+  const seen = new Set();
+  const out  = [];
+  for (const c of TOP_COUNTERS) {
+    if (seen.has(c.name)) continue;
+    seen.add(c.name);
+    let best=0, bestType='';
+    for (const t of [c.move, ...c.types]) {
+      if (!t) continue;
+      const e = typeEffVs(t, defTypes);
+      if (e > best) { best=e; bestType=t; }
+    }
+    if (best >= 1.6) out.push({...c, eff:best, bestMoveType:bestType});
+  }
+  out.sort((a,b)=>b.eff-a.eff);
+  return out.slice(0,10);
 }
 
-// Extract numeric dex ID from PokeAPI URL
-function idFromUrl(url) {
-  const m = url.match(/\/(\d+)\/$/);
-  return m ? parseInt(m[1]) : 0;
+function reverseLookupCP(goStats, targetCP) {
+  const rows = [];
+  const levels = Object.keys(CP_MULTIPLIERS).map(Number).sort((a,b)=>a-b);
+  for (const lv of levels) {
+    for (let a=0;a<=15;a++) for (let d=0;d<=15;d++) for (let h=0;h<=15;h++) {
+      if (calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,lv)===targetCP)
+        rows.push({level:lv,a,d,h,ivPct:Math.round(((a+d+h)/45)*100)});
+    }
+  }
+  return rows;
 }
 
-// Tag helpers for display labels in the dex grid
+function idFromUrl(url){ const m=url.match(/\/(\d+)\/$/); return m?parseInt(m[1]):0; }
+
 function getFormTag(name) {
-  if (name.endsWith('-shadow'))    return { tag: 'Shadow',    color: '#7c3aed' };
-  if (name.endsWith('-purified'))  return { tag: 'Purified',  color: '#06b6d4' };
-  if (name.includes('-alola'))     return { tag: 'Alolan',    color: '#f59e0b' };
-  if (name.includes('-galar'))     return { tag: 'Galarian',  color: '#ec4899' };
-  if (name.includes('-hisui'))     return { tag: 'Hisuian',   color: '#84cc16' };
-  if (name.includes('-paldea'))    return { tag: 'Paldean',   color: '#f97316' };
-  if (name.includes('-mega'))      return { tag: 'Mega',      color: '#6366f1' };
-  if (name.includes('-gmax'))      return { tag: 'G-Max',     color: '#ef4444' };
-  if (name.includes('-primal'))    return { tag: 'Primal',    color: '#dc2626' };
-  if (name.includes('-origin'))    return { tag: 'Origin',    color: '#8b5cf6' };
-  if (name.includes('-sky'))       return { tag: 'Sky',       color: '#38bdf8' };
-  if (name.includes('-therian'))   return { tag: 'Therian',   color: '#10b981' };
-  if (name.includes('-black') || name.includes('-white')) return { tag: 'Alt', color: '#9ca3af' };
-  if (name.includes('-10') || name.includes('-50') || name.includes('-complete')) return { tag: 'Form', color: '#a78bfa' };
+  if(name.endsWith('-shadow'))   return {tag:'Shadow',   color:'#7c3aed'};
+  if(name.endsWith('-purified')) return {tag:'Purified',  color:'#06b6d4'};
+  if(name.includes('-alola'))   return {tag:'Alolan',   color:'#f59e0b'};
+  if(name.includes('-galar'))   return {tag:'Galarian',  color:'#ec4899'};
+  if(name.includes('-hisui'))   return {tag:'Hisuian',   color:'#84cc16'};
+  if(name.includes('-paldea'))  return {tag:'Paldean',   color:'#f97316'};
+  if(name.includes('-mega'))    return {tag:'Mega',      color:'#6366f1'};
+  if(name.includes('-gmax'))    return {tag:'G-Max',     color:'#ef4444'};
+  if(name.includes('-primal'))  return {tag:'Primal',    color:'#dc2626'};
+  if(name.includes('-origin'))  return {tag:'Origin',    color:'#8b5cf6'};
+  if(name.includes('-therian')) return {tag:'Therian',   color:'#10b981'};
   return null;
-}
-
-// Shadow & Purified: purely GO concepts, not in PokeAPI.
-// We generate virtual entries for every base Pokémon that appears in GO raids/Team GO Rocket.
-// Shadow/Purified use the same sprite as the base but we overlay a tint + badge.
-const SHADOW_IDS = [
-  1,2,3,4,5,6,7,8,9,25,27,28,37,38,41,42,50,51,52,53,
-  54,55,58,59,66,67,68,72,73,74,75,76,77,78,79,80,81,82,
-  88,89,93,94,100,101,109,110,111,112,113,114,115,116,117,
-  118,119,120,121,122,123,126,127,128,130,131,137,138,139,
-  140,141,142,143,147,148,149,152,153,154,155,156,157,158,
-  159,160,161,162,163,164,165,166,167,168,169,170,171,172,
-  173,174,175,176,177,178,179,180,181,182,183,184,185,186,
-  187,188,189,190,191,192,193,194,195,196,197,198,199,200,
-  201,202,203,204,205,206,207,208,209,210,211,212,213,214,
-  215,216,217,218,219,220,221,222,223,224,225,226,227,228,
-  229,230,231,232,233,234,235,236,237,238,239,240,241,242,
-  243,244,245,246,247,248,252,253,254,255,256,257,258,259,
-  260,261,262,263,264,265,266,267,268,269,270,271,272,273,
-  274,275,276,277,278,279,280,281,282,283,284,285,286,287,
-  288,289,290,291,292,293,294,295,296,297,298,299,300,301,
-  302,303,304,305,306,307,308,309,310,311,312,313,314,315,
-  316,317,318,319,320,321,322,323,324,325,326,327,328,329,
-  330,331,332,333,334,335,336,337,338,339,340,341,342,343,
-  344,345,346,347,348,349,350
-];
-
-async function fetchPokemonList() {
-  if (cache['full_list']) return cache['full_list'];
-
-  // Fetch all base Pokémon (up to 1025 species + alternate forms PokeAPI knows)
-  const res = await fetch('https://pokeapi.co/api/v2/pokemon?limit=2000&offset=0');
-  const data = await res.json();
-
-  const list = [];
-
-  data.results.forEach(p => {
-    const id = idFromUrl(p.url);
-    list.push({
-      name: p.name,
-      id,
-      displayName: formatDisplayName(p.name),
-      formTag: getFormTag(p.name),
-      spriteId: id, // numeric ID used for sprite fallback
-      isVirtual: false,
-    });
-  });
-
-  // Inject Shadow & Purified virtual entries
-  // We add them after the real list so they appear in their own section
-  SHADOW_IDS.forEach(id => {
-    const base = list.find(p => p.id === id && !p.name.includes('-'));
-    if (!base) return;
-    list.push({
-      name: base.name + '-shadow',
-      id,
-      displayName: formatDisplayName(base.name) + ' (Shadow)',
-      formTag: { tag: 'Shadow', color: '#7c3aed' },
-      spriteId: id,
-      isVirtual: true,
-      baseName: base.name,
-      shadowType: 'shadow',
-    });
-    list.push({
-      name: base.name + '-purified',
-      id,
-      displayName: formatDisplayName(base.name) + ' (Purified)',
-      formTag: { tag: 'Purified', color: '#06b6d4' },
-      spriteId: id,
-      isVirtual: true,
-      baseName: base.name,
-      shadowType: 'purified',
-    });
-  });
-
-  cache['full_list'] = list;
-  return list;
 }
 
 function formatDisplayName(name) {
   return name
-    .replace(/-mega-[xy]$/, m => ' Mega' + m.slice(-2).toUpperCase())
-    .replace(/-mega$/, ' Mega')
-    .replace(/-gmax$/, ' G-Max')
-    .replace(/-alola$/, ' (Alolan)')
-    .replace(/-galar$/, ' (Galarian)')
-    .replace(/-hisui$/, ' (Hisuian)')
-    .replace(/-paldea$/, ' (Paldean)')
-    .replace(/-primal$/, ' (Primal)')
-    .replace(/-origin$/, ' (Origin)')
-    .replace(/-therian$/, ' (Therian)')
-    .replace(/-shadow$/, '')
-    .replace(/-purified$/, '')
-    .split('-')
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
+    .replace(/-mega-([xy])$/,(_, c)=>` Mega ${c.toUpperCase()}`)
+    .replace(/-mega$/,' Mega').replace(/-gmax$/,' G-Max')
+    .replace(/-alola$/,' (Alolan)').replace(/-galar$/,' (Galarian)')
+    .replace(/-hisui$/,' (Hisuian)').replace(/-paldea$/,' (Paldean)')
+    .replace(/-primal$/,' (Primal)').replace(/-origin$/,' (Origin)')
+    .replace(/-therian$/,' (Therian)')
+    .split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
 }
 
-function getGoStats(pokemon) {
-  const stats = {};
-  pokemon.stats.forEach(s => {
-    stats[s.stat.name] = s.base_stat;
+// ── API ───────────────────────────────────────────────────────────────────
+const cache = {};
+async function fetchPokemon(key) {
+  key = String(key).toLowerCase();
+  if (cache[key]) return cache[key];
+  const r = await fetch(`https://pokeapi.co/api/v2/pokemon/${key}`);
+  if (!r.ok) throw new Error('not found');
+  return (cache[key] = await r.json());
+}
+async function fetchSpecies(key) {
+  const ck = `sp_${key}`;
+  if (cache[ck]) return cache[ck];
+  const r = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${key}`);
+  if (!r.ok) return null;
+  return (cache[ck] = await r.json());
+}
+async function fetchEvoChain(url) {
+  if (cache[url]) return cache[url];
+  const r = await fetch(url);
+  if (!r.ok) return null;
+  return (cache[url] = await r.json());
+}
+async function fetchPokemonList() {
+  if (cache['full_list']) return cache['full_list'];
+  const r = await fetch('https://pokeapi.co/api/v2/pokemon?limit=2000&offset=0');
+  const data = await r.json();
+  const list = data.results.map(p => {
+    const id = idFromUrl(p.url);
+    return { name:p.name, id, displayName:formatDisplayName(p.name), formTag:getFormTag(p.name), spriteId:id, isVirtual:false };
   });
-  // Pokémon GO uses modified base stats
-  const attack = Math.round(2 * (stats['attack'] * 7/8 + stats['special-attack'] * 1/8) + (stats['speed'] > 0 ? Math.floor(stats['speed'] / 2) : 0) / 4);
-  const defense = Math.round(2 * (stats['defense'] * 7/8 + stats['special-defense'] * 1/8) + (stats['speed'] > 0 ? Math.floor(stats['speed'] / 2) : 0) / 4);
-  const hp = Math.floor(stats['hp'] * 1.75 + 50);
-  // Simplified but more accurate GO formula
-  const goAtk = Math.max(1, Math.round((stats['attack'] + stats['special-attack']) * 0.875 + stats['speed'] * 0.125));
-  const goDef = Math.max(1, Math.round((stats['defense'] + stats['special-defense']) * 0.875 + stats['speed'] * 0.125));
-  const goHP = Math.max(1, Math.floor(stats['hp'] * 1.75 + 50));
-  return { attack: goAtk, defense: goDef, hp: goHP, rawStats: stats };
+  // inject shadow / purified virtual entries
+  SHADOW_IDS.forEach(id => {
+    const base = list.find(p => p.id===id && !p.name.includes('-'));
+    if (!base) return;
+    list.push({ name:base.name+'-shadow',   id, displayName:formatDisplayName(base.name)+' (Shadow)',
+      formTag:{tag:'Shadow',color:'#7c3aed'},   spriteId:id, isVirtual:true, shadowType:'shadow',   baseName:base.name });
+    list.push({ name:base.name+'-purified', id, displayName:formatDisplayName(base.name)+' (Purified)',
+      formTag:{tag:'Purified',color:'#06b6d4'}, spriteId:id, isVirtual:true, shadowType:'purified', baseName:base.name });
+  });
+  return (cache['full_list'] = list);
 }
 
-// ===================== SMALL COMPONENTS =====================
-function TypeBadge({ type, size = 'sm' }) {
-  const color = TYPE_COLORS[type] || '#888';
-  const pad = size === 'lg' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-xs';
-  return (
-    <span className={`type-badge ${pad} font-bold`} style={{ background: color + '33', color: color, border: `1px solid ${color}66` }}>
-      {capitalize(type)}
-    </span>
-  );
+// ── SMALL COMPONENTS ──────────────────────────────────────────────────────
+function TypeBadge({ type, size='sm' }) {
+  const c = TYPE_COLORS[type]||'#888';
+  const p = size==='lg' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-xs';
+  return <span className={`type-badge ${p}`} style={{background:c+'33',color:c,border:`1px solid ${c}66`}}>{capitalize(type)}</span>;
 }
 
-function StatBar({ label, value, max = 300, color = '#818cf8' }) {
-  const pct = Math.min(100, (value / max) * 100);
-  const getColor = (v) => v >= 200 ? '#34d399' : v >= 150 ? '#60a5fa' : v >= 100 ? '#818cf8' : v >= 50 ? '#fbbf24' : '#f87171';
-  const barColor = color === 'auto' ? getColor(value) : color;
+function StatBar({ label, value, max=300, color='#818cf8' }) {
+  const pct = Math.min(100,(value/max)*100);
+  const auto = v => v>=200?'#34d399':v>=150?'#60a5fa':v>=100?'#818cf8':v>=50?'#fbbf24':'#f87171';
+  const bar = color==='auto' ? auto(value) : color;
   return (
     <div className="flex items-center gap-2 mb-1.5">
       <span className="text-gray-400 text-xs w-20 shrink-0">{label}</span>
       <div className="stat-bar flex-1">
-        <div className="stat-fill" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${barColor}aa, ${barColor})` }} />
+        <div className="stat-fill" style={{width:`${pct}%`,background:`linear-gradient(90deg,${bar}aa,${bar})`}} />
       </div>
       <span className="text-white text-xs w-8 text-right font-semibold">{value}</span>
     </div>
   );
 }
 
-function Toggle({ value, onChange, label, icon }) {
+function Slider({ label, value, onChange, min=0, max=50, step=0.5, color='#6366f1', showInput=false }) {
+  const pct = ((value-min)/(max-min))*100;
   return (
-    <button onClick={() => onChange(!value)}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${value ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/15'}`}>
-      {icon && <span>{icon}</span>}
+    <div className="glass rounded-xl p-4 space-y-2">
+      <div className="flex justify-between items-center">
+        <label className="text-gray-300 text-sm font-semibold">{label}</label>
+        {showInput ? (
+          <input type="number" value={value} min={min} max={max} step={step}
+            onChange={e=>{const v=parseFloat(e.target.value);if(v>=min&&v<=max&&(step<1||Number.isInteger(v/step)))onChange(v);}}
+            className="w-16 text-center bg-indigo-500/20 border border-indigo-500/40 rounded-lg px-2 py-0.5 text-indigo-300 font-bold text-sm focus:outline-none" />
+        ) : (
+          <span className="font-bold text-sm px-2 py-0.5 rounded-lg bg-white/10" style={{color}}>{value}</span>
+        )}
+      </div>
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e=>onChange(parseFloat(e.target.value))}
+        className="slider-thumb w-full"
+        style={{background:`linear-gradient(90deg,${color} ${pct}%,rgba(255,255,255,0.1) ${pct}%)`}} />
+      <div className="flex justify-between text-gray-600 text-xs"><span>{min}</span><span>{max}</span></div>
+    </div>
+  );
+}
+
+function IVSlider({ label, value, onChange, color }) {
+  return (
+    <div className="glass rounded-xl p-4 space-y-2">
+      <div className="flex justify-between items-center">
+        <label className="text-gray-300 text-sm font-semibold">{label}</label>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5">
+            {[...Array(16)].map((_,i)=>(
+              <div key={i} className="w-1.5 h-3 rounded-sm cursor-pointer transition-all"
+                style={{background:i<=value?color:'rgba(255,255,255,0.1)'}}
+                onClick={()=>onChange(i)} />
+            ))}
+          </div>
+          <input type="number" value={value} min={0} max={15}
+            onChange={e=>{const v=parseInt(e.target.value);if(v>=0&&v<=15)onChange(v);}}
+            className="w-10 text-center bg-white/10 border border-white/20 rounded-lg px-1 py-0.5 text-white font-bold text-sm focus:outline-none focus:border-indigo-400" />
+        </div>
+      </div>
+      <input type="range" min={0} max={15} step={1} value={value}
+        onChange={e=>onChange(parseInt(e.target.value))}
+        className="slider-thumb w-full"
+        style={{background:`linear-gradient(90deg,${color} ${(value/15)*100}%,rgba(255,255,255,0.1) ${(value/15)*100}%)`}} />
+      <div className="flex justify-between text-gray-600 text-xs"><span>0</span><span>15</span></div>
+    </div>
+  );
+}
+
+function LoadingSpinner({ size='md' }) {
+  const s = size==='sm'?'w-6 h-6':size==='lg'?'w-16 h-16':'w-10 h-10';
+  return <div className={`${s} border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin`} />;
+}
+
+function Toggle({ value, onChange, label }) {
+  return (
+    <button onClick={()=>onChange(!value)}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${value?'bg-indigo-600 text-white':'bg-white/10 text-gray-400 hover:bg-white/15'}`}>
       {label}
     </button>
   );
 }
 
-function LoadingSpinner({ size = 'md' }) {
-  const s = size === 'sm' ? 'w-6 h-6' : size === 'lg' ? 'w-16 h-16' : 'w-10 h-10';
-  return (
-    <div className={`${s} border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin`} />
-  );
-}
-
-function PokemonImage({ pokemon, isShiny, is3D, shadowType, className = '', size = 96 }) {
-  const [imgError, setImgError] = React.useState(false);
+function PokemonImage({ pokemon, isShiny, is3D, shadowType, className='', size=96 }) {
+  const [err, setErr] = React.useState(false);
   const [loaded, setLoaded] = React.useState(false);
-
-  // Reset on pokemon change
-  React.useEffect(() => { setImgError(false); setLoaded(false); }, [pokemon?.id, isShiny, is3D]);
-
+  React.useEffect(()=>{setErr(false);setLoaded(false);},[pokemon?.id,isShiny,is3D]);
   let src = null;
-  if (!imgError) {
-    if (is3D) {
-      src = isShiny
-        ? pokemon?.sprites?.other?.home?.front_shiny
-        : pokemon?.sprites?.other?.home?.front_default;
-    }
-    if (!src) {
-      src = isShiny
-        ? pokemon?.sprites?.other?.['official-artwork']?.front_shiny
-        : pokemon?.sprites?.other?.['official-artwork']?.front_default;
-    }
-    if (!src) {
-      src = isShiny ? pokemon?.sprites?.front_shiny : pokemon?.sprites?.front_default;
-    }
+  if (!err) {
+    if (is3D) src = isShiny ? pokemon?.sprites?.other?.home?.front_shiny : pokemon?.sprites?.other?.home?.front_default;
+    if (!src) src = isShiny ? pokemon?.sprites?.other?.['official-artwork']?.front_shiny : pokemon?.sprites?.other?.['official-artwork']?.front_default;
+    if (!src) src = isShiny ? pokemon?.sprites?.front_shiny : pokemon?.sprites?.front_default;
   }
-
-  const glowClass = isShiny ? 'shiny-glow' : shadowType === 'shadow' ? 'shadow-glow' : shadowType === 'purified' ? 'purified-glow' : '';
-
+  const glowClass = isShiny ? 'shiny-glow' : shadowType==='shadow' ? 'shadow-glow' : shadowType==='purified' ? 'purified-glow' : '';
+  const imgFilter = shadowType==='purified' ? 'saturate(0.25) brightness(1.15)' : undefined;
   return (
-    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+    <div className="relative flex items-center justify-center" style={{width:size,height:size}}>
       {!loaded && <LoadingSpinner size="sm" />}
       {src && (
-        <img src={src} alt={pokemon?.name || ''} width={size} height={size}
-          className={`pokemon-img ${glowClass} ${className} ${loaded ? 'opacity-100' : 'opacity-0'}`}
-          style={{ transition: 'opacity 0.3s', objectFit: 'contain', width: size, height: size }}
-          onLoad={() => setLoaded(true)}
-          onError={() => { setImgError(true); setLoaded(true); }} />
+        <img src={src} alt={pokemon?.name||''} width={size} height={size}
+          className={`pokemon-img ${glowClass} ${className} ${loaded?'opacity-100':'opacity-0'}`}
+          style={{transition:'opacity 0.3s',objectFit:'contain',width:size,height:size,filter:imgFilter}}
+          onLoad={()=>setLoaded(true)} onError={()=>{setErr(true);setLoaded(true);}} />
       )}
-      {(!src || imgError) && loaded && (
-        <div className="flex items-center justify-center text-gray-600" style={{ width: size, height: size }}>
+      {shadowType==='shadow' && loaded && src && (
+        <div className="absolute inset-0 pointer-events-none rounded-lg"
+          style={{background:'linear-gradient(150deg,rgba(88,28,235,0.38) 0%,rgba(109,40,217,0.22) 55%,transparent 100%)'}} />
+      )}
+      {(!src||err) && loaded && (
+        <div className="flex items-center justify-center text-gray-600" style={{width:size,height:size}}>
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
-            <circle cx="12" cy="12" r="3"/>
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/>
           </svg>
         </div>
       )}
@@ -390,80 +486,53 @@ function PokemonImage({ pokemon, isShiny, is3D, shadowType, className = '', size
   );
 }
 
-// ===================== SEARCH BAR =====================
-function SearchBar({ onSelect, placeholder = "Search Pokémon by name or ID..." }) {
+// ── SEARCH BAR ────────────────────────────────────────────────────────────
+function SearchBar({ onSelect, placeholder='Search Pokémon by name or ID...' }) {
   const [query, setQuery] = React.useState('');
+  const [all, setAll] = React.useState([]);
   const [results, setResults] = React.useState([]);
-  const [allPokemon, setAllPokemon] = React.useState([]);
-  const [loading, setLoading] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const ref = React.useRef(null);
-
-  React.useEffect(() => {
-    fetchPokemonList().then(setAllPokemon).catch(() => {});
-  }, []);
-
-  React.useEffect(() => {
+  React.useEffect(()=>{ fetchPokemonList().then(setAll).catch(()=>{}); },[]);
+  React.useEffect(()=>{
     if (!query.trim()) { setResults([]); setOpen(false); return; }
     const q = query.toLowerCase().trim();
-    const filtered = allPokemon.filter(p =>
-      p.name.includes(q) ||
-      p.displayName.toLowerCase().includes(q) ||
-      String(p.id).includes(q)
-    ).slice(0, 14);
-    setResults(filtered);
-    setOpen(filtered.length > 0);
-  }, [query, allPokemon]);
-
-  React.useEffect(() => {
-    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
-
-  const handleSelect = (p) => {
-    setQuery('');
-    setOpen(false);
-    onSelect(p.name);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (query.trim()) { onSelect(query.trim().toLowerCase()); setQuery(''); setOpen(false); }
-  };
-
+    const f = all.filter(p=>p.name.includes(q)||p.displayName.toLowerCase().includes(q)||String(p.id).startsWith(q)).slice(0,14);
+    setResults(f); setOpen(f.length>0);
+  },[query,all]);
+  React.useEffect(()=>{
+    const h = e => { if(ref.current&&!ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown',h); return ()=>document.removeEventListener('mousedown',h);
+  },[]);
+  const select = p => { setQuery(''); setOpen(false); onSelect(p.name); };
+  const submit = e => { e.preventDefault(); if(query.trim()){ onSelect(query.trim().toLowerCase()); setQuery(''); setOpen(false); } };
   return (
     <div ref={ref} className="relative w-full max-w-xl">
-      <form onSubmit={handleSubmit} className="relative">
+      <form onSubmit={submit} className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </div>
-        <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-          onFocus={() => results.length > 0 && setOpen(true)}
+        <input value={query} onChange={e=>setQuery(e.target.value)} onFocus={()=>results.length>0&&setOpen(true)}
           placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white/15 transition-all duration-200" />
+          className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white/15 transition-all" />
       </form>
       {open && (
         <div className="absolute top-full mt-2 w-full glass-dark rounded-xl overflow-hidden search-dropdown animate-fade-in shadow-2xl">
-          {results.map(p => (
-            <button key={p.name} onClick={() => handleSelect(p)}
+          {results.map(p=>(
+            <button key={p.name} onClick={()=>select(p)}
               className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/10 transition-colors text-left">
               <div className="relative shrink-0 w-8 h-8 flex items-center justify-center rounded-lg"
-                style={p.shadowType === 'shadow' ? {background:'rgba(88,28,235,0.25)',boxShadow:'0 0 8px rgba(124,58,237,0.5)'} :
-                       p.shadowType === 'purified' ? {background:'rgba(6,182,212,0.15)'} : {}}>
-                <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId || p.id}.png`}
+                style={p.shadowType==='shadow'?{background:'rgba(88,28,235,0.25)',boxShadow:'0 0 8px rgba(124,58,237,0.5)'}:
+                       p.shadowType==='purified'?{background:'rgba(6,182,212,0.15)'}:{}}>
+                <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId||p.id}.png`}
                   width="32" height="32" className="object-contain" alt=""
-                  style={p.shadowType === 'purified' ? {filter:'saturate(0.25) brightness(1.1)'} : {}} />
-                {p.shadowType === 'shadow' && (
-                  <div className="absolute inset-0 rounded-lg pointer-events-none"
-                    style={{background:'linear-gradient(135deg,rgba(88,28,235,0.35),rgba(124,58,237,0.2))'}} />
-                )}
+                  style={p.shadowType==='purified'?{filter:'saturate(0.25) brightness(1.1)'}:{}} />
+                {p.shadowType==='shadow'&&<div className="absolute inset-0 rounded-lg pointer-events-none"
+                  style={{background:'linear-gradient(135deg,rgba(88,28,235,0.3),rgba(124,58,237,0.15))'}} />}
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-white text-sm font-medium truncate">{p.displayName}</span>
-                {p.formTag && <span className="text-xs font-semibold" style={{color: p.formTag.color}}>{p.formTag.tag}</span>}
+                {p.formTag&&<span className="text-xs font-semibold" style={{color:p.formTag.color}}>{p.formTag.tag}</span>}
               </div>
               <span className="ml-auto text-gray-500 text-xs shrink-0">#{padId(p.id)}</span>
             </button>
@@ -474,604 +543,102 @@ function SearchBar({ onSelect, placeholder = "Search Pokémon by name or ID..." 
   );
 }
 
-// ===================== CP CALCULATOR PANEL =====================
-function CPCalculator({ pokemon }) {
-  const goStats = React.useMemo(() => pokemon ? getGoStats(pokemon) : null, [pokemon]);
-  const [level, setLevel] = React.useState(40);
-  const [atkIV, setAtkIV] = React.useState(15);
-  const [defIV, setDefIV] = React.useState(15);
-  const [hpIV, setHpIV] = React.useState(15);
-
-  const levelOptions = React.useMemo(() => {
-    const opts = [];
-    for (let i = 1; i <= 50; i += 0.5) opts.push(i);
-    return opts;
-  }, []);
-
-  const cp = React.useMemo(() => {
-    if (!goStats) return 0;
-    return calcCP(goStats.attack, goStats.defense, goStats.hp, atkIV, defIV, hpIV, level);
-  }, [goStats, level, atkIV, defIV, hpIV]);
-
-  const hp = React.useMemo(() => {
-    if (!goStats) return 0;
-    return calcHP(goStats.hp, hpIV, level);
-  }, [goStats, hpIV, level]);
-
-  const maxCP = React.useMemo(() => {
-    if (!goStats) return 0;
-    return calcCP(goStats.attack, goStats.defense, goStats.hp, 15, 15, 15, 50);
-  }, [goStats]);
-
-  const cpPct = maxCP > 0 ? Math.min(100, (cp / maxCP) * 100) : 0;
-
-  if (!pokemon) return (
-    <div className="flex flex-col items-center justify-center h-48 text-gray-600 gap-3">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/>
-      </svg>
-      <p className="text-sm">Select a Pokémon to calculate CP</p>
-    </div>
-  );
-
-  return (
-    <div className="animate-slide-up space-y-4">
-      <div className="cp-display rounded-2xl p-5 text-center">
-        <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Combat Power</p>
-        <p className="text-6xl font-black text-white tracking-tight">{cp.toLocaleString()}</p>
-        <div className="mt-3 stat-bar max-w-xs mx-auto">
-          <div className="stat-fill" style={{ width: `${cpPct}%`, background: 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899)' }} />
-        </div>
-        <p className="text-gray-500 text-xs mt-1">{cpPct.toFixed(1)}% of max CP ({maxCP.toLocaleString()})</p>
-      </div>
-      <div className="grid grid-cols-3 gap-2 text-center">
-        {[['ATK',goStats.attack + atkIV],['DEF',goStats.defense + defIV],['HP',hp]].map(([l,v]) => (
-          <div key={l} className="glass rounded-xl p-2.5">
-            <p className="text-gray-400 text-xs">{l}</p>
-            <p className="text-white font-bold text-lg">{v}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Level Slider */}
-      <div className="glass rounded-xl p-4 space-y-2">
-        <div className="flex justify-between items-center">
-          <label className="text-gray-300 text-sm font-semibold">Level</label>
-          <span className="text-indigo-400 font-bold text-sm bg-indigo-500/20 px-2 py-0.5 rounded-lg">{level}</span>
-        </div>
-        <input type="range" min="1" max="50" step="0.5" value={level}
-          onChange={e => setLevel(parseFloat(e.target.value))}
-          className="slider-thumb w-full"
-          style={{ background: `linear-gradient(90deg, #6366f1 ${((level-1)/49)*100}%, rgba(255,255,255,0.1) ${((level-1)/49)*100}%)` }} />
-        <div className="flex justify-between text-gray-600 text-xs"><span>1</span><span>25</span><span>50</span></div>
-      </div>
-
-      {/* IV Sliders */}
-      {[['Attack IV', atkIV, setAtkIV, '#f87171'],['Defense IV', defIV, setDefIV, '#60a5fa'],['HP IV', hpIV, setHpIV, '#34d399']].map(([label, val, setter, color]) => (
-        <div key={label} className="glass rounded-xl p-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <label className="text-gray-300 text-sm font-semibold">{label}</label>
-            <div className="flex items-center gap-2">
-              <div className="flex gap-0.5">
-                {[...Array(16)].map((_, i) => (
-                  <div key={i} className="w-1.5 h-3 rounded-sm transition-all" style={{ background: i <= val ? color : 'rgba(255,255,255,0.1)' }} />
-                ))}
-              </div>
-              <span className="font-bold text-sm w-5 text-right" style={{ color }}>{val}</span>
-            </div>
-          </div>
-          <input type="range" min="0" max="15" step="1" value={val}
-            onChange={e => setter(parseInt(e.target.value))}
-            className="slider-thumb w-full"
-            style={{ background: `linear-gradient(90deg, ${color} ${(val/15)*100}%, rgba(255,255,255,0.1) ${(val/15)*100}%)` }} />
-          <div className="flex justify-between text-gray-600 text-xs"><span>0</span><span>15</span></div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ===================== EVOLUTION CHAIN =====================
-function EvoNode({ name, isShiny, is3D, onSelect, isActive }) {
-  const [poke, setPoke] = React.useState(null);
-  React.useEffect(() => {
-    fetchPokemon(name).then(setPoke).catch(() => {});
-  }, [name]);
-  return (
-    <button onClick={() => onSelect(name)}
-      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 hover:bg-white/10 ${isActive ? 'bg-white/15 ring-2 ring-indigo-500' : ''}`}>
-      {poke ? (
-        <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={64} />
-      ) : (
-        <div className="w-16 h-16 flex items-center justify-center"><LoadingSpinner size="sm" /></div>
-      )}
-      <span className="text-gray-300 text-xs font-medium">{capitalize(name)}</span>
-      {poke && <span className="text-gray-600 text-xs">#{padId(poke.id)}</span>}
-    </button>
-  );
-}
-
-function EvoArrow({ detail }) {
-  return (
-    <div className="flex flex-col items-center justify-center px-1 min-w-[60px]">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-indigo-400 -rotate-90 md:rotate-0">
-        <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-      </svg>
-      {detail && <span className="text-gray-600 text-xs text-center mt-0.5 max-w-[60px] leading-tight">{detail}</span>}
-    </div>
-  );
-}
-
-function parseEvoChain(chain) {
-  const stages = [];
-  const traverse = (node, stage) => {
-    if (!stages[stage]) stages[stage] = [];
-    const detail = node.evolution_details?.[0];
-    let req = '';
-    if (detail) {
-      if (detail.min_level) req = `Lv.${detail.min_level}`;
-      else if (detail.item) req = capitalize(detail.item.name.replace(/-/g,' '));
-      else if (detail.held_item) req = capitalize(detail.held_item.name.replace(/-/g,' '));
-      else if (detail.trigger?.name === 'trade') req = 'Trade';
-      else if (detail.min_happiness) req = `Happy (${detail.min_happiness})`;
-      else if (detail.known_move) req = capitalize(detail.known_move.name.replace(/-/g,' '));
-      else if (detail.location) req = 'Location';
-      else req = capitalize((detail.trigger?.name || '').replace(/-/g,' '));
-    }
-    stages[stage].push({ name: node.species.name, req, hasEvos: node.evolves_to.length > 0 });
-    node.evolves_to.forEach(n => traverse(n, stage + 1));
-  };
-  traverse(chain, 0);
-  return stages;
-}
-
-function EvolutionChain({ speciesName, isShiny, is3D, onSelect, activeName }) {
-  const [stages, setStages] = React.useState(null);
-  const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!speciesName) return;
-    setLoading(true); setStages(null);
-    fetchSpecies(speciesName)
-      .then(sp => sp ? fetchEvolutionChain(sp.evolution_chain.url) : null)
-      .then(chain => { if (chain) setStages(parseEvoChain(chain.chain)); })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [speciesName]);
-
-  if (loading) return <div className="flex justify-center py-4"><LoadingSpinner /></div>;
-  if (!stages) return null;
-  if (stages.length <= 1 && stages[0]?.length <= 1) return (
-    <div className="text-gray-600 text-sm text-center py-2">No evolutions</div>
-  );
-
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-1 py-2">
-      {stages.map((stage, si) => (
-        <React.Fragment key={si}>
-          {si > 0 && (
-            <div className="flex flex-col gap-2">
-              {stage.map(node => node.req && (
-                <EvoArrow key={node.name} detail={node.req} />
-              ))}
-              {!stage.some(n => n.req) && <EvoArrow detail="" />}
-            </div>
-          )}
-          <div className={`flex flex-col gap-2 ${stage.length > 1 ? 'justify-center' : ''}`}>
-            {stage.map(node => (
-              <EvoNode key={node.name} name={node.name} isShiny={isShiny} is3D={is3D}
-                onSelect={onSelect} isActive={node.name === activeName} />
-            ))}
-          </div>
-        </React.Fragment>
-      ))}
-    </div>
-  );
-}
-
-// ===================== DETAIL PANEL =====================
-function DetailPanel({ pokemon, species, isShiny, is3D }) {
-  const goStats = React.useMemo(() => pokemon ? getGoStats(pokemon) : null, [pokemon]);
-  const types = pokemon?.types?.map(t => t.type.name) || [];
-  const { weaknesses, resistances, immunities } = getTypeWeaknesses(types);
-
-  if (!pokemon) return null;
-
-  const flavorText = species?.flavor_text_entries
-    ?.find(f => f.language.name === 'en')
-    ?.flavor_text?.replace(/\f|\n/g, ' ') || '';
-
-  return (
-    <div className="animate-slide-up space-y-4">
-      {/* Types */}
-      <div className="flex gap-2 flex-wrap">
-        {types.map(t => <TypeBadge key={t} type={t} size="lg" />)}
-      </div>
-
-      {/* Flavor text */}
-      {flavorText && (
-        <p className="text-gray-400 text-sm leading-relaxed italic">"{flavorText}"</p>
-      )}
-
-      {/* Physical */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="glass rounded-xl p-3 text-center">
-          <p className="text-gray-500 text-xs">Height</p>
-          <p className="text-white font-bold">{(pokemon.height / 10).toFixed(1)} m</p>
-        </div>
-        <div className="glass rounded-xl p-3 text-center">
-          <p className="text-gray-500 text-xs">Weight</p>
-          <p className="text-white font-bold">{(pokemon.weight / 10).toFixed(1)} kg</p>
-        </div>
-      </div>
-
-      {/* GO Base Stats */}
-      <div className="glass rounded-xl p-4">
-        <p className="text-gray-400 text-xs uppercase tracking-widest mb-3 font-semibold">Pokémon GO Base Stats</p>
-        <StatBar label="Attack" value={goStats.attack} max={300} color="auto" />
-        <StatBar label="Defense" value={goStats.defense} max={300} color="auto" />
-        <StatBar label="Stamina" value={goStats.hp} max={500} color="auto" />
-      </div>
-
-      {/* Main game stats */}
-      <div className="glass rounded-xl p-4">
-        <p className="text-gray-400 text-xs uppercase tracking-widest mb-3 font-semibold">Base Stats</p>
-        {pokemon.stats.map(s => (
-          <StatBar key={s.stat.name} label={capitalize(s.stat.name.replace('-',' '))} value={s.base_stat} max={255} color="auto" />
-        ))}
-        <div className="border-t border-white/10 mt-2 pt-2">
-          <StatBar label="Total" value={pokemon.stats.reduce((a,b) => a + b.base_stat, 0)} max={720} color="#f59e0b" />
-        </div>
-      </div>
-
-      {/* Type Chart */}
-      <div className="glass rounded-xl p-4 space-y-3">
-        <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold">Type Match-Ups</p>
-        {weaknesses.length > 0 && (
-          <div>
-            <p className="text-red-400 text-xs mb-1.5 font-semibold">Weak Against</p>
-            <div className="flex flex-wrap gap-1.5">
-              {weaknesses.map(({type, mult}) => (
-                <div key={type} className="flex items-center gap-1">
-                  <TypeBadge type={type} />
-                  <span className="text-red-400 text-xs font-bold">{mult}x</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {resistances.length > 0 && (
-          <div>
-            <p className="text-green-400 text-xs mb-1.5 font-semibold">Resistant To</p>
-            <div className="flex flex-wrap gap-1.5">
-              {resistances.map(({type, mult}) => (
-                <div key={type} className="flex items-center gap-1">
-                  <TypeBadge type={type} />
-                  <span className="text-green-400 text-xs font-bold">{mult}x</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {immunities.length > 0 && (
-          <div>
-            <p className="text-gray-400 text-xs mb-1.5 font-semibold">Immune To</p>
-            <div className="flex flex-wrap gap-1.5">
-              {immunities.map(({type}) => (
-                <div key={type} className="flex items-center gap-1">
-                  <TypeBadge type={type} />
-                  <span className="text-gray-400 text-xs font-bold">0x</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ===================== COMPARISON MODE =====================
-function ComparePanel({ isShiny, is3D }) {
-  const [pokeA, setPokeA] = React.useState(null);
-  const [pokeB, setPokeB] = React.useState(null);
-  const [loadingA, setLoadingA] = React.useState(false);
-  const [loadingB, setLoadingB] = React.useState(false);
-
-  const loadPoke = (nameOrId, setter, setLoading) => {
-    setLoading(true);
-    fetchPokemon(nameOrId).then(setter).catch(() => setter(null)).finally(() => setLoading(false));
-  };
-
-  const statsA = pokeA ? getGoStats(pokeA) : null;
-  const statsB = pokeB ? getGoStats(pokeB) : null;
-  const maxCPA = statsA ? calcCP(statsA.attack, statsA.defense, statsA.hp, 15,15,15,50) : 0;
-  const maxCPB = statsB ? calcCP(statsB.attack, statsB.defense, statsB.hp, 15,15,15,50) : 0;
-  const globalMax = Math.max(maxCPA, maxCPB, 1);
-
-  const statKeys = ['attack','defense','special-attack','special-defense','speed','hp'];
-
-  return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="grid grid-cols-2 gap-3">
-        {[['A', pokeA, setPokeA, loadingA, setLoadingA, statsA, maxCPA],
-          ['B', pokeB, setPokeB, loadingB, setLoadingB, statsB, maxCPB]].map(([slot, poke, setPoke, loading, setLoading, stats, maxCP]) => (
-          <div key={slot} className="glass rounded-2xl p-4 space-y-3">
-            <SearchBar onSelect={(name) => loadPoke(name, setPoke, setLoading)} placeholder={`Search Pokémon ${slot}...`} />
-            {loading && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
-            {poke && !loading && (
-              <div className="flex flex-col items-center gap-2 animate-fade-in">
-                <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={100} />
-                <p className="text-white font-bold text-lg">{capitalize(poke.name)}</p>
-                <p className="text-gray-500 text-xs">#{padId(poke.id)}</p>
-                <div className="flex gap-1 flex-wrap justify-center">
-                  {poke.types.map(t => <TypeBadge key={t.type.name} type={t.type.name} />)}
-                </div>
-                <div className="w-full glass rounded-xl p-3 text-center">
-                  <p className="text-gray-500 text-xs">Max CP (Lv50, 15/15/15)</p>
-                  <p className="text-2xl font-black text-indigo-400">{maxCP.toLocaleString()}</p>
-                </div>
-              </div>
-            )}
-            {!poke && !loading && (
-              <div className="flex flex-col items-center justify-center py-8 text-gray-700">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-                <p className="text-sm mt-2">Select Pokémon {slot}</p>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {pokeA && pokeB && (
-        <div className="glass rounded-2xl p-4 space-y-2 animate-slide-up">
-          <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3">Stat Comparison</p>
-
-          {/* GO Stats */}
-          <p className="text-indigo-400 text-xs font-semibold mt-2">Pokémon GO Stats</p>
-          {[['GO Attack', statsA?.attack, statsB?.attack],
-            ['GO Defense', statsA?.defense, statsB?.defense],
-            ['GO Stamina', statsA?.hp, statsB?.hp],
-            ['Max CP', maxCPA, maxCPB]].map(([label, vA, vB]) => {
-            const max = Math.max(vA||0, vB||0, 1);
-            const pctA = ((vA||0)/max)*100, pctB = ((vB||0)/max)*100;
-            const winner = vA > vB ? 'A' : vA < vB ? 'B' : null;
-            return (
-              <div key={label} className="flex items-center gap-2 mb-1.5">
-                <span className={`text-xs w-5 text-right font-bold ${winner==='A'?'text-blue-400':'text-gray-500'}`}>{vA?.toLocaleString()}</span>
-                <div className="flex-1 flex gap-0.5">
-                  <div className="stat-bar flex-1">
-                    <div className="stat-fill" style={{ width:`${pctA}%`, background: winner==='A'?'linear-gradient(90deg,#6366f1,#818cf8)':'linear-gradient(90deg,#4b5563,#6b7280)', marginLeft:'auto' }} />
-                  </div>
-                  <div className="text-gray-600 text-xs w-16 text-center shrink-0">{label}</div>
-                  <div className="stat-bar flex-1">
-                    <div className="stat-fill" style={{ width:`${pctB}%`, background: winner==='B'?'linear-gradient(90deg,#ec4899,#f43f5e)':'linear-gradient(90deg,#4b5563,#6b7280)' }} />
-                  </div>
-                </div>
-                <span className={`text-xs w-5 font-bold ${winner==='B'?'text-pink-400':'text-gray-500'}`}>{vB?.toLocaleString()}</span>
-              </div>
-            );
-          })}
-
-          {/* Base stats */}
-          <p className="text-purple-400 text-xs font-semibold mt-3">Base Stats</p>
-          {statKeys.map(statKey => {
-            const vA = statsA?.rawStats?.[statKey] || 0;
-            const vB = statsB?.rawStats?.[statKey] || 0;
-            const max = Math.max(vA, vB, 1);
-            const pctA = (vA/max)*100, pctB = (vB/max)*100;
-            const winner = vA > vB ? 'A' : vA < vB ? 'B' : null;
-            return (
-              <div key={statKey} className="flex items-center gap-2 mb-1.5">
-                <span className={`text-xs w-5 text-right font-bold ${winner==='A'?'text-blue-400':'text-gray-500'}`}>{vA}</span>
-                <div className="flex-1 flex gap-0.5">
-                  <div className="stat-bar flex-1">
-                    <div className="stat-fill" style={{ width:`${pctA}%`, background: winner==='A'?'linear-gradient(90deg,#6366f1,#818cf8)':'linear-gradient(90deg,#4b5563,#6b7280)', marginLeft:'auto' }} />
-                  </div>
-                  <div className="text-gray-600 text-xs w-24 text-center shrink-0">{capitalize(statKey.replace('-',' '))}</div>
-                  <div className="stat-bar flex-1">
-                    <div className="stat-fill" style={{ width:`${pctB}%`, background: winner==='B'?'linear-gradient(90deg,#ec4899,#f43f5e)':'linear-gradient(90deg,#4b5563,#6b7280)' }} />
-                  </div>
-                </div>
-                <span className={`text-xs w-5 font-bold ${winner==='B'?'text-pink-400':'text-gray-500'}`}>{vB}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ===================== POKEDEX GRID =====================
-// Generation ranges for grouping
-const GENERATIONS = [
-  { label: 'Gen I',   min: 1,    max: 151  },
-  { label: 'Gen II',  min: 152,  max: 251  },
-  { label: 'Gen III', min: 252,  max: 386  },
-  { label: 'Gen IV',  min: 387,  max: 493  },
-  { label: 'Gen V',   min: 494,  max: 649  },
-  { label: 'Gen VI',  min: 650,  max: 721  },
-  { label: 'Gen VII', min: 722,  max: 809  },
-  { label: 'Gen VIII',min: 810,  max: 905  },
-  { label: 'Gen IX',  min: 906,  max: 1025 },
-  { label: 'Forms',   min: 1026, max: 99999 },
-];
-
+// ── POKÉDEX GRID ──────────────────────────────────────────────────────────
 function FormTag({ tag, color }) {
-  return (
-    <span className="text-xs font-bold px-1.5 py-0.5 rounded-md leading-none"
-      style={{ background: color + '33', color, border: `1px solid ${color}55` }}>
-      {tag}
-    </span>
-  );
+  return <span className="text-xs font-bold px-1.5 py-0.5 rounded-md leading-none"
+    style={{background:color+'33',color,border:`1px solid ${color}55`}}>{tag}</span>;
 }
 
 function PokedexGrid({ onSelect, activeName }) {
-  const [allPokemon, setAllPokemon] = React.useState([]);
+  const [all, setAll] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [filter, setFilter] = React.useState('');
-  const [genFilter, setGenFilter] = React.useState('all');
-  const [formFilter, setFormFilter] = React.useState('all'); // all | base | alolan | galarian | hisuian | paldean | mega | shadow | purified
+  const [gen, setGen] = React.useState('all');
+  const [form, setForm] = React.useState('all');
   const [page, setPage] = React.useState(0);
-  const PER_PAGE = 48;
-
-  React.useEffect(() => {
-    fetchPokemonList().then(list => { setAllPokemon(list); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
-
-  const filtered = React.useMemo(() => {
-    let list = allPokemon;
-
-    // Text filter
-    if (filter.trim()) {
-      const q = filter.toLowerCase().trim();
-      list = list.filter(p =>
-        p.name.includes(q) ||
-        p.displayName.toLowerCase().includes(q) ||
-        String(p.id).startsWith(q)
-      );
-    }
-
-    // Generation filter
-    if (genFilter !== 'all') {
-      const gen = GENERATIONS.find(g => g.label === genFilter);
-      if (gen) list = list.filter(p => p.id >= gen.min && p.id <= gen.max);
-    }
-
-    // Form filter
-    if (formFilter === 'base') {
-      list = list.filter(p => !p.isVirtual && !p.formTag);
-    } else if (formFilter === 'shadow') {
-      list = list.filter(p => p.shadowType === 'shadow');
-    } else if (formFilter === 'purified') {
-      list = list.filter(p => p.shadowType === 'purified');
-    } else if (formFilter === 'alolan') {
-      list = list.filter(p => p.name.includes('-alola'));
-    } else if (formFilter === 'galarian') {
-      list = list.filter(p => p.name.includes('-galar'));
-    } else if (formFilter === 'hisuian') {
-      list = list.filter(p => p.name.includes('-hisui'));
-    } else if (formFilter === 'paldean') {
-      list = list.filter(p => p.name.includes('-paldea'));
-    } else if (formFilter === 'mega') {
-      list = list.filter(p => p.name.includes('-mega') || p.name.includes('-primal'));
-    } else if (formFilter === 'forms') {
-      list = list.filter(p => p.formTag && !p.isVirtual);
-    }
-
+  const PER = 48;
+  React.useEffect(()=>{ fetchPokemonList().then(l=>{setAll(l);setLoading(false);}).catch(()=>setLoading(false)); },[]);
+  const filtered = React.useMemo(()=>{
+    let list = all;
+    if(filter.trim()){ const q=filter.toLowerCase().trim(); list=list.filter(p=>p.name.includes(q)||p.displayName.toLowerCase().includes(q)||String(p.id).startsWith(q)); }
+    if(gen!=='all'){ const g=GENERATION_RANGES.find(x=>x.label===gen); if(g) list=list.filter(p=>p.id>=g.min&&p.id<=g.max); }
+    if(form==='base')     list=list.filter(p=>!p.isVirtual&&!p.formTag);
+    else if(form==='shadow')   list=list.filter(p=>p.shadowType==='shadow');
+    else if(form==='purified') list=list.filter(p=>p.shadowType==='purified');
+    else if(form==='alolan')   list=list.filter(p=>p.name.includes('-alola'));
+    else if(form==='galarian') list=list.filter(p=>p.name.includes('-galar'));
+    else if(form==='hisuian')  list=list.filter(p=>p.name.includes('-hisui'));
+    else if(form==='paldean')  list=list.filter(p=>p.name.includes('-paldea'));
+    else if(form==='mega')     list=list.filter(p=>p.name.includes('-mega')||p.name.includes('-primal'));
+    else if(form==='forms')    list=list.filter(p=>p.formTag&&!p.isVirtual);
     return list;
-  }, [allPokemon, filter, genFilter, formFilter]);
-
-  // Reset page on filter change
-  React.useEffect(() => { setPage(0); }, [filter, genFilter, formFilter]);
-
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const visible = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
-
-  const formFilters = [
-    { id: 'all',      label: 'All' },
-    { id: 'base',     label: 'Base' },
-    { id: 'alolan',   label: 'Alolan',   color: '#f59e0b' },
-    { id: 'galarian', label: 'Galarian', color: '#ec4899' },
-    { id: 'hisuian',  label: 'Hisuian',  color: '#84cc16' },
-    { id: 'paldean',  label: 'Paldean',  color: '#f97316' },
-    { id: 'mega',     label: 'Mega',     color: '#6366f1' },
-    { id: 'forms',    label: 'Forms',    color: '#a78bfa' },
-    { id: 'shadow',   label: '👻 Shadow',   color: '#7c3aed' },
-    { id: 'purified', label: '✨ Purified',  color: '#06b6d4' },
+  },[all,filter,gen,form]);
+  React.useEffect(()=>setPage(0),[filter,gen,form]);
+  const pages = Math.ceil(filtered.length/PER);
+  const visible = filtered.slice(page*PER,(page+1)*PER);
+  const formBtns = [
+    {id:'all',label:'All'},{id:'base',label:'Base'},
+    {id:'alolan',label:'Alolan',c:'#f59e0b'},{id:'galarian',label:'Galarian',c:'#ec4899'},
+    {id:'hisuian',label:'Hisuian',c:'#84cc16'},{id:'paldean',label:'Paldean',c:'#f97316'},
+    {id:'mega',label:'Mega',c:'#6366f1'},{id:'forms',label:'Other Forms',c:'#a78bfa'},
+    {id:'shadow',label:'👻 Shadow',c:'#7c3aed'},{id:'purified',label:'✨ Purified',c:'#06b6d4'},
   ];
-
   return (
     <div className="space-y-3">
-      {/* Search */}
       <div className="relative">
         <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         </div>
-        <input value={filter} onChange={e => setFilter(e.target.value)}
-          placeholder="Filter by name or #..." className="w-full pl-8 pr-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-        {filter && (
-          <button onClick={() => setFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400">✕</button>
-        )}
+        <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Filter by name or #..."
+          className="w-full pl-8 pr-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+        {filter&&<button onClick={()=>setFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 text-xs">✕</button>}
       </div>
-
-      {/* Generation tabs */}
       <div className="flex gap-1 flex-wrap">
-        <button onClick={() => setGenFilter('all')}
-          className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${genFilter==='all' ? 'bg-indigo-600 text-white' : 'glass text-gray-500 hover:text-white'}`}>
-          All
-        </button>
-        {GENERATIONS.map(g => (
-          <button key={g.label} onClick={() => setGenFilter(g.label)}
-            className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${genFilter===g.label ? 'bg-indigo-600 text-white' : 'glass text-gray-500 hover:text-white'}`}>
-            {g.label}
-          </button>
+        <button onClick={()=>setGen('all')} className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${gen==='all'?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>All</button>
+        {GENERATION_RANGES.map(g=>(
+          <button key={g.label} onClick={()=>setGen(g.label)} className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${gen===g.label?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>{g.label}</button>
         ))}
       </div>
-
-      {/* Form filters */}
       <div className="flex gap-1 flex-wrap">
-        {formFilters.map(f => (
-          <button key={f.id} onClick={() => setFormFilter(f.id)}
+        {formBtns.map(f=>(
+          <button key={f.id} onClick={()=>setForm(f.id)}
             className="px-2 py-0.5 rounded-md text-xs font-semibold transition-all"
-            style={formFilter === f.id
-              ? { background: (f.color || '#6366f1') + '33', color: f.color || '#818cf8', border: `1px solid ${f.color || '#6366f1'}55` }
-              : { background: 'rgba(255,255,255,0.06)', color: '#6b7280', border: '1px solid rgba(255,255,255,0.1)' }}>
+            style={form===f.id?{background:(f.c||'#6366f1')+'33',color:f.c||'#818cf8',border:`1px solid ${f.c||'#6366f1'}55`}:{background:'rgba(255,255,255,0.06)',color:'#6b7280',border:'1px solid rgba(255,255,255,0.1)'}}>
             {f.label}
           </button>
         ))}
       </div>
-
-      {/* Count */}
       <p className="text-gray-600 text-xs">{filtered.length.toLocaleString()} Pokémon</p>
-
-      {loading ? (
-        <div className="flex justify-center py-8"><LoadingSpinner /></div>
-      ) : (
+      {loading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
         <>
           <div className="pokedex-grid max-h-[480px] overflow-y-auto pr-1">
-            {visible.map(p => {
-              const spriteFilter = p.shadowType === 'purified'
-                ? 'brightness(1.15) saturate(0.3) contrast(1.05)'
-                : undefined;
-              const isActive = activeName === p.name;
+            {visible.map(p=>{
+              const isActive = activeName===p.name;
               return (
-                <button key={p.name} onClick={() => onSelect(p.name)}
-                  className={`card-hover glass rounded-xl p-2 flex flex-col items-center gap-1 transition-all duration-200 ${isActive ? 'ring-2 ring-indigo-500 bg-indigo-500/20' : 'hover:bg-white/10'}`}>
-                  <div className="relative" style={{ width: 52, height: 52 }}>
-                    <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId || p.id}.png`}
+                <button key={p.name} onClick={()=>onSelect(p.name)}
+                  className={`card-hover glass rounded-xl p-2 flex flex-col items-center gap-1 transition-all duration-200 ${isActive?'ring-2 ring-indigo-500 bg-indigo-500/20':'hover:bg-white/10'}`}>
+                  <div className="relative" style={{width:52,height:52}}>
+                    <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId||p.id}.png`}
                       width="52" height="52" className="object-contain" alt={p.displayName} loading="lazy"
-                      style={spriteFilter ? { filter: spriteFilter } : {}} />
-                    {p.shadowType === 'shadow' && (
-                      <div className="absolute inset-0 rounded-md pointer-events-none"
-                        style={{ background: 'linear-gradient(160deg, rgba(88,28,235,0.45) 0%, rgba(109,40,217,0.3) 60%, rgba(0,0,0,0) 100%)' }} />
-                    )}
+                      style={p.shadowType==='purified'?{filter:'saturate(0.25) brightness(1.1)'}:{}} />
+                    {p.shadowType==='shadow'&&<div className="absolute inset-0 rounded-md pointer-events-none"
+                      style={{background:'linear-gradient(150deg,rgba(88,28,235,0.4) 0%,rgba(109,40,217,0.25) 60%,transparent 100%)'}} />}
                   </div>
                   <span className="text-gray-300 text-xs font-medium leading-tight text-center line-clamp-2">{p.displayName}</span>
                   <div className="flex flex-wrap gap-0.5 justify-center">
                     <span className="text-gray-600 text-xs">#{padId(p.id)}</span>
-                    {p.formTag && <FormTag tag={p.formTag.tag} color={p.formTag.color} />}
+                    {p.formTag&&<FormTag tag={p.formTag.tag} color={p.formTag.color} />}
                   </div>
                 </button>
               );
             })}
-            {visible.length === 0 && (
-              <div className="col-span-full py-8 text-center text-gray-600 text-sm">No Pokémon match your filters</div>
-            )}
+            {visible.length===0&&<div className="col-span-full py-8 text-center text-gray-600 text-sm">No Pokémon match your filters</div>}
           </div>
-
-          {totalPages > 1 && (
+          {pages>1&&(
             <div className="flex items-center justify-between gap-2">
-              <button onClick={() => setPage(p => Math.max(0, p-1))} disabled={page===0}
-                className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">← Prev</button>
-              <span className="text-gray-500 text-xs">{page+1} / {totalPages}</span>
-              <button onClick={() => setPage(p => Math.min(totalPages-1, p+1))} disabled={page===totalPages-1}
-                className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">Next →</button>
+              <button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={page===0} className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">← Prev</button>
+              <span className="text-gray-500 text-xs">{page+1} / {pages}</span>
+              <button onClick={()=>setPage(p=>Math.min(pages-1,p+1))} disabled={page===pages-1} className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">Next →</button>
             </div>
           )}
         </>
@@ -1080,660 +647,773 @@ function PokedexGrid({ onSelect, activeName }) {
   );
 }
 
-// ===================== RAID IV CHART =====================
-// Encounter levels & IV floors per source type in Pokémon GO
-const ENCOUNTER_TYPES = {
-  raid:         { label: 'Raid',           level: 20, boostedLevel: 25, floor: 10, hasBoosted: true  },
-  shadowRaid:   { label: 'Shadow Raid',    level: 8,  boostedLevel: 13, floor: 6,  hasBoosted: true  },
-  research:     { label: 'Research / GO Pass', level: 15, boostedLevel: null, floor: 10, hasBoosted: false },
-  egg:          { label: 'Egg Hatch',      level: 20, boostedLevel: null, floor: 10, hasBoosted: false },
-  wild:         { label: 'Wild Catch',     level: 1,  boostedLevel: null, floor: 0,  hasBoosted: false },
-  trade_lucky:  { label: 'Lucky Trade',    level: 1,  boostedLevel: null, floor: 12, hasBoosted: false },
-  trade_good:   { label: 'Good Friend Trade', level: 1, boostedLevel: null, floor: 1, hasBoosted: false },
-  trade_best:   { label: 'Best Friend Trade', level: 1, boostedLevel: null, floor: 5, hasBoosted: false },
-};
-
-// Weather boost applies to Pokémon types
-const WEATHER_BOOSTS = {
-  sunny:      { label: '☀️ Sunny/Clear',     types: ['fire','grass','ground'] },
-  rainy:      { label: '🌧️ Rainy',           types: ['water','electric','bug'] },
-  partlyCloudy:{ label: '⛅ Partly Cloudy',  types: ['normal','rock'] },
-  cloudy:     { label: '☁️ Cloudy/Overcast', types: ['fairy','fighting','poison'] },
-  windy:      { label: '💨 Windy',           types: ['dragon','flying','psychic'] },
-  snowy:      { label: '❄️ Snowy',           types: ['ice','steel'] },
-  foggy:      { label: '🌫️ Foggy',           types: ['dark','ghost'] },
-};
-
-function getWeatherForTypes(types) {
-  const weathers = [];
-  Object.entries(WEATHER_BOOSTS).forEach(([key, w]) => {
-    if (types.some(t => w.types.includes(t))) weathers.push({ key, label: w.label });
-  });
-  return weathers;
-}
-
-function RaidIVChart({ pokemon }) {
-  const goStats = React.useMemo(() => pokemon ? getGoStats(pokemon) : null, [pokemon]);
-  const types   = pokemon?.types?.map(t => t.type.name) || [];
-  const boostedWeathers = React.useMemo(() => getWeatherForTypes(types), [types]);
-
-  const [encounterType, setEncounterType] = React.useState('raid');
-  const [minCPFilter, setMinCPFilter] = React.useState('');
-  const [maxCPFilter, setMaxCPFilter] = React.useState('');
-  const [sortBy, setSortBy]   = React.useState('iv');
-  const [showTop, setShowTop] = React.useState(50);
-  const [ivFilter, setIVFilter] = React.useState('all'); // all | hundo | great | good
-
-  const enc = ENCOUNTER_TYPES[encounterType];
-
-  // Build all IV combos from the floor up
-  const allRows = React.useMemo(() => {
-    if (!goStats || !enc) return [];
-    const rows = [];
-    const floor = enc.floor;
-    for (let a = 15; a >= floor; a--) {
-      for (let d = 15; d >= floor; d--) {
-        for (let h = 15; h >= floor; h--) {
-          const cpNormal  = calcCP(goStats.attack, goStats.defense, goStats.hp, a, d, h, enc.level);
-          const cpBoosted = enc.hasBoosted
-            ? calcCP(goStats.attack, goStats.defense, goStats.hp, a, d, h, enc.boostedLevel)
-            : null;
-          const hpNormal  = calcHP(goStats.hp, h, enc.level);
-          const hpBoosted = enc.hasBoosted ? calcHP(goStats.hp, h, enc.boostedLevel) : null;
-          const ivPct = Math.round(((a + d + h) / 45) * 100);
-          rows.push({ a, d, h, cpNormal, cpBoosted, hpNormal, hpBoosted, ivPct });
-        }
-      }
-    }
-    return rows;
-  }, [goStats, encounterType]);
-
-  const filteredRows = React.useMemo(() => {
-    let rows = allRows;
-    const lo = parseInt(minCPFilter) || 0;
-    const hi = parseInt(maxCPFilter) || Infinity;
-    if (lo > 0 || hi < Infinity) {
-      rows = rows.filter(r => {
-        const cpToCheck = enc.hasBoosted ? [r.cpNormal, r.cpBoosted] : [r.cpNormal];
-        return cpToCheck.some(cp => cp >= lo && cp <= hi);
-      });
-    }
-    if (ivFilter === 'hundo') rows = rows.filter(r => r.a === 15 && r.d === 15 && r.h === 15);
-    else if (ivFilter === 'great')  rows = rows.filter(r => r.ivPct >= 93);
-    else if (ivFilter === 'good')   rows = rows.filter(r => r.ivPct >= 82);
-    else if (ivFilter === 'lucky')  rows = rows.filter(r => r.a >= 12 && r.d >= 12 && r.h >= 12);
-
-    const keyMap = { iv: 'ivPct', cp: 'cpNormal', atk: 'a', def: 'd', hp: 'h' };
-    const key = keyMap[sortBy] || 'ivPct';
-    rows = [...rows].sort((a, b) => b[key] - a[key]);
-    return rows.slice(0, showTop);
-  }, [allRows, minCPFilter, maxCPFilter, ivFilter, sortBy, showTop]);
-
-  const getIVStyle = (pct) => {
-    if (pct === 100) return { bg:'rgba(251,191,36,0.2)', border:'rgba(251,191,36,0.5)', text:'#fbbf24' };
-    if (pct >= 98)  return { bg:'rgba(52,211,153,0.15)', border:'rgba(52,211,153,0.4)', text:'#34d399' };
-    if (pct >= 93)  return { bg:'rgba(96,165,250,0.15)', border:'rgba(96,165,250,0.4)', text:'#60a5fa' };
-    if (pct >= 82)  return { bg:'rgba(129,140,248,0.12)', border:'rgba(129,140,248,0.3)', text:'#818cf8' };
-    return { bg:'rgba(255,255,255,0.03)', border:'rgba(255,255,255,0.07)', text:'#9ca3af' };
-  };
-
-  const ivColor = (v, floor) => {
-    if (v === 15)  return '#f87171';
-    if (v >= 13)   return '#fca5a5';
-    if (v === floor) return '#6b7280';
-    return '#d1d5db';
-  };
-
-  // Hundo CPs for quick reference
-  const hundoCPNormal  = goStats ? calcCP(goStats.attack, goStats.defense, goStats.hp, 15,15,15, enc.level) : 0;
-  const hundoCPBoosted = (goStats && enc.hasBoosted) ? calcCP(goStats.attack, goStats.defense, goStats.hp, 15,15,15, enc.boostedLevel) : 0;
-  const floorCPNormal  = goStats ? calcCP(goStats.attack, goStats.defense, goStats.hp, enc.floor, enc.floor, enc.floor, enc.level) : 0;
-
-  if (!pokemon) return (
-    <div className="flex flex-col items-center justify-center h-48 text-gray-600 gap-3">
-      <p className="text-sm">Select a Pokémon to view the Raid IV chart</p>
-    </div>
-  );
-
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────
+function DetailPanel({ pokemon, species }) {
+  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
+  const types = pokemon?.types?.map(t=>t.type.name)||[];
+  const {weak, resist, immune} = getTypeWeaknesses(types);
+  if (!pokemon) return null;
+  const flavor = species?.flavor_text_entries?.find(f=>f.language.name==='en')?.flavor_text?.replace(/\f|\n/g,' ')||'';
   return (
     <div className="animate-slide-up space-y-4">
-
-      {/* Encounter type picker */}
-      <div className="glass rounded-xl p-4 space-y-2">
-        <p className="text-gray-300 text-xs font-semibold uppercase tracking-widest">Encounter Type</p>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(ENCOUNTER_TYPES).map(([key, e]) => (
-            <button key={key} onClick={() => { setEncounterType(key); setShowTop(50); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${encounterType===key ? 'bg-indigo-600 text-white' : 'glass text-gray-400 hover:text-white'}`}>
-              {e.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Quick reference hundo CP banner */}
+      <div className="flex gap-2 flex-wrap">{types.map(t=><TypeBadge key={t} type={t} size="lg" />)}</div>
+      {flavor&&<p className="text-gray-400 text-sm leading-relaxed italic">"{flavor}"</p>}
       <div className="grid grid-cols-2 gap-3">
-        <div className="glass rounded-xl p-3 text-center" style={{ border:'1px solid rgba(251,191,36,0.3)', background:'rgba(251,191,36,0.08)' }}>
-          <p className="text-yellow-400 text-xs font-semibold">⭐ Hundo CP (Lv{enc.level})</p>
-          <p className="text-white font-black text-xl">{hundoCPNormal.toLocaleString()}</p>
-          <p className="text-gray-500 text-xs">15/15/15 perfect</p>
-        </div>
-        {enc.hasBoosted ? (
-          <div className="glass rounded-xl p-3 text-center" style={{ border:'1px solid rgba(99,102,241,0.3)', background:'rgba(99,102,241,0.08)' }}>
-            <p className="text-indigo-400 text-xs font-semibold">🌤️ Boosted Hundo (Lv{enc.boostedLevel})</p>
-            <p className="text-white font-black text-xl">{hundoCPBoosted.toLocaleString()}</p>
-            {boostedWeathers.length > 0 && (
-              <p className="text-gray-500 text-xs">{boostedWeathers.map(w => w.label).join(' / ')}</p>
-            )}
-          </div>
-        ) : (
-          <div className="glass rounded-xl p-3 text-center">
-            <p className="text-gray-500 text-xs font-semibold">IV Floor</p>
-            <p className="text-white font-black text-xl">{enc.floor}/{enc.floor}/{enc.floor}</p>
-            <p className="text-gray-500 text-xs">Min CP: {floorCPNormal.toLocaleString()}</p>
-          </div>
-        )}
+        <div className="glass rounded-xl p-3 text-center"><p className="text-gray-500 text-xs">Height</p><p className="text-white font-bold">{(pokemon.height/10).toFixed(1)} m</p></div>
+        <div className="glass rounded-xl p-3 text-center"><p className="text-gray-500 text-xs">Weight</p><p className="text-white font-bold">{(pokemon.weight/10).toFixed(1)} kg</p></div>
       </div>
 
-      {/* Weather boost info */}
-      {enc.hasBoosted && boostedWeathers.length > 0 && (
-        <div className="glass rounded-xl p-3" style={{ border:'1px solid rgba(56,189,248,0.2)', background:'rgba(56,189,248,0.06)' }}>
-          <p className="text-sky-400 text-xs font-semibold mb-1">Weather Boost Active When:</p>
-          <div className="flex flex-wrap gap-2">
-            {boostedWeathers.map(w => (
-              <span key={w.key} className="text-xs text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2.5 py-1 rounded-lg">{w.label}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* IV info banner */}
-      <div className="glass rounded-xl p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-400">
-        <span>🔒 IV Floor: <strong className="text-white">{enc.floor}/{enc.floor}/{enc.floor}</strong></span>
-        <span>📊 Catch Level: <strong className="text-white">{enc.level}{enc.hasBoosted ? ` / ${enc.boostedLevel} (boosted)` : ''}</strong></span>
-        <span>🎲 Combos: <strong className="text-white">{allRows.length.toLocaleString()}</strong></span>
-      </div>
-
-      {/* Filters row */}
-      <div className="space-y-2">
-        <div className="flex gap-2 items-center flex-wrap">
-          <input type="number" value={minCPFilter} onChange={e => setMinCPFilter(e.target.value)} placeholder="Min CP"
-            className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-          <span className="text-gray-600">–</span>
-          <input type="number" value={maxCPFilter} onChange={e => setMaxCPFilter(e.target.value)} placeholder="Max CP"
-            className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-          {(minCPFilter || maxCPFilter) && (
-            <button onClick={() => { setMinCPFilter(''); setMaxCPFilter(''); }}
-              className="px-2 py-1.5 glass rounded-lg text-gray-500 hover:text-white text-xs transition-colors">✕ Clear</button>
-          )}
-          <span className="ml-auto text-gray-600 text-xs">{filteredRows.length} results</span>
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {[['All','all','#6b7280'],['⭐ Hundo (100%)','hundo','#fbbf24'],['Lucky Floor (12+)','lucky','#34d399'],['≥98% IV','great','#60a5fa'],['≥82% IV','good','#818cf8']].map(([l,v,c]) => (
-            <button key={v} onClick={() => setIVFilter(v)}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
-              style={ivFilter===v ? { background:c+'33', color:c, border:`1px solid ${c}55` } : { background:'rgba(255,255,255,0.05)', color:'#6b7280', border:'1px solid rgba(255,255,255,0.1)' }}>
-              {l}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-1.5 items-center flex-wrap">
-          <span className="text-gray-600 text-xs">Sort:</span>
-          {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v]) => (
-            <button key={v} onClick={() => setSortBy(v)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${sortBy===v ? 'bg-indigo-600 text-white' : 'glass text-gray-500 hover:text-white'}`}>
-              {l}
-            </button>
+      {/* Pokémon GO Stats only */}
+      <div className="glass rounded-xl p-4">
+        <p className="text-gray-400 text-xs uppercase tracking-widest mb-3 font-semibold">Pokémon GO Stats</p>
+        <StatBar label="Attack"  value={goStats.attack}  max={300} color="auto" />
+        <StatBar label="Defense" value={goStats.defense} max={300} color="auto" />
+        <StatBar label="HP"      value={goStats.hp}      max={500} color="auto" />
+        <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
+          {[['Attack',goStats.attack,'#f87171'],['Defense',goStats.defense,'#60a5fa'],['HP',goStats.hp,'#34d399']].map(([l,v,c])=>(
+            <div key={l} className="rounded-lg p-2" style={{background:c+'15',border:`1px solid ${c}30`}}>
+              <p className="text-xs font-medium" style={{color:c}}>{l}</p>
+              <p className="text-white font-black text-lg">{v}</p>
+            </div>
           ))}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="glass rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-white/10" style={{ background:'rgba(255,255,255,0.04)' }}>
-                <th className="px-2 py-2.5 text-left text-gray-500 font-semibold">#</th>
-                <th className="px-2 py-2.5 text-center text-gray-400 font-semibold">IV%</th>
-                <th className="px-2 py-2.5 text-center text-red-400 font-semibold">ATK</th>
-                <th className="px-2 py-2.5 text-center text-blue-400 font-semibold">DEF</th>
-                <th className="px-2 py-2.5 text-center text-green-400 font-semibold">HP</th>
-                <th className="px-2 py-2.5 text-center text-white font-semibold">CP (Lv{enc.level})</th>
-                {enc.hasBoosted && <th className="px-2 py-2.5 text-center text-indigo-400 font-semibold">CP (Lv{enc.boostedLevel} 🌤️)</th>}
-                <th className="px-2 py-2.5 text-center text-green-400 font-semibold">HP</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredRows.map((row, i) => {
-                const { bg, text } = getIVStyle(row.ivPct);
-                const isHundo = row.a === 15 && row.d === 15 && row.h === 15;
-                return (
-                  <tr key={`${row.a}-${row.d}-${row.h}`}
-                    className="border-b hover:bg-white/5 transition-colors"
-                    style={{ borderColor:'rgba(255,255,255,0.05)', background: bg }}>
-                    <td className="px-2 py-2 text-gray-600 w-6">{i+1}</td>
-                    <td className="px-2 py-2 text-center font-bold" style={{ color: text }}>
-                      {isHundo ? '⭐' : ''}{row.ivPct}%
-                    </td>
-                    <td className="px-2 py-2 text-center font-mono font-semibold"
-                      style={{ color: ivColor(row.a, enc.floor) }}>{row.a}</td>
-                    <td className="px-2 py-2 text-center font-mono font-semibold"
-                      style={{ color: ivColor(row.d, enc.floor) }}>{row.d}</td>
-                    <td className="px-2 py-2 text-center font-mono font-semibold"
-                      style={{ color: ivColor(row.h, enc.floor) }}>{row.h}</td>
-                    <td className="px-2 py-2 text-center font-bold text-white">{row.cpNormal.toLocaleString()}</td>
-                    {enc.hasBoosted && (
-                      <td className="px-2 py-2 text-center font-bold text-indigo-300">{row.cpBoosted?.toLocaleString()}</td>
-                    )}
-                    <td className="px-2 py-2 text-center text-green-400">{row.hpNormal}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filteredRows.length === 0 && (
-            <div className="py-10 text-center text-gray-600 text-sm">No IV combinations match your filters</div>
-          )}
-        </div>
+      {/* Type chart */}
+      <div className="glass rounded-xl p-4 space-y-3">
+        <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold">Type Match-Ups</p>
+        {weak.length>0&&(<div><p className="text-red-400 text-xs mb-1.5 font-semibold">Weak Against</p>
+          <div className="flex flex-wrap gap-1.5">{weak.map(({type,mult})=>(
+            <div key={type} className="flex items-center gap-1"><TypeBadge type={type}/><span className="text-red-400 text-xs font-bold">{mult}×</span></div>
+          ))}</div></div>)}
+        {resist.length>0&&(<div><p className="text-green-400 text-xs mb-1.5 font-semibold">Resistant To</p>
+          <div className="flex flex-wrap gap-1.5">{resist.map(({type,mult})=>(
+            <div key={type} className="flex items-center gap-1"><TypeBadge type={type}/><span className="text-green-400 text-xs font-bold">{mult}×</span></div>
+          ))}</div></div>)}
+        {immune.length>0&&(<div><p className="text-gray-400 text-xs mb-1.5 font-semibold">Immune To</p>
+          <div className="flex flex-wrap gap-1.5">{immune.map(({type})=>(
+            <div key={type} className="flex items-center gap-1"><TypeBadge type={type}/><span className="text-gray-400 text-xs font-bold">0×</span></div>
+          ))}</div></div>)}
       </div>
-
-      {showTop < allRows.length && (
-        <button onClick={() => setShowTop(t => t + 100)}
-          className="w-full py-2.5 glass rounded-xl text-gray-400 hover:text-white text-sm transition-colors hover:bg-white/10">
-          Show more ({allRows.length - showTop} remaining)
-        </button>
-      )}
     </div>
   );
 }
 
-// ===================== IV CHART =====================
-function IVChart({ pokemon }) {
-  const goStats = React.useMemo(() => pokemon ? getGoStats(pokemon) : null, [pokemon]);
+// ── CP CALCULATOR ─────────────────────────────────────────────────────────
+function CPCalculator({ pokemon }) {
+  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
+  const [tab, setTab]     = React.useState('calc');
   const [level, setLevel] = React.useState(40);
-  const [minCP, setMinCP] = React.useState('');
-  const [maxCP, setMaxCP] = React.useState('');
-  const [sortBy, setSortBy] = React.useState('iv'); // 'iv' | 'cp' | 'atk' | 'def' | 'hp'
-  const [showTop, setShowTop] = React.useState(50);
-  const [filterPerfect, setFilterPerfect] = React.useState(false);
-  const [highlightIV, setHighlightIV] = React.useState(null); // null | 'hundo' | 'lucky' | 'great' | 'ultra'
-
-  const allRows = React.useMemo(() => {
-    if (!goStats) return [];
-    const rows = [];
-    for (let a = 15; a >= 0; a--) {
-      for (let d = 15; d >= 0; d--) {
-        for (let h = 15; h >= 0; h--) {
-          const cp = calcCP(goStats.attack, goStats.defense, goStats.hp, a, d, h, level);
-          const hp = calcHP(goStats.hp, h, level);
-          const ivPct = Math.round(((a + d + h) / 45) * 100);
-          rows.push({ a, d, h, cp, hp, ivPct });
-        }
-      }
-    }
-    return rows;
-  }, [goStats, level]);
-
-  const filtered = React.useMemo(() => {
-    let rows = allRows;
-    const lo = parseInt(minCP) || 0;
-    const hi = parseInt(maxCP) || Infinity;
-    if (lo > 0 || hi < Infinity) rows = rows.filter(r => r.cp >= lo && r.cp <= hi);
-    if (filterPerfect) rows = rows.filter(r => r.a === 15 && r.d === 15 && r.h === 15);
-
-    if (highlightIV === 'hundo') rows = rows.filter(r => r.ivPct === 100);
-    else if (highlightIV === 'lucky') rows = rows.filter(r => r.a >= 12 && r.d >= 12 && r.h >= 12);
-    else if (highlightIV === 'great') rows = rows.filter(r => r.ivPct >= 82);
-    else if (highlightIV === 'ultra') rows = rows.filter(r => r.ivPct >= 67);
-
-    const key = sortBy === 'cp' ? 'cp' : sortBy === 'atk' ? 'a' : sortBy === 'def' ? 'd' : sortBy === 'hp' ? 'h' : 'ivPct';
-    rows = [...rows].sort((a, b) => b[key] - a[key]);
-    return rows.slice(0, showTop);
-  }, [allRows, minCP, maxCP, filterPerfect, highlightIV, sortBy, showTop]);
-
-  const getIVColor = (pct) => {
-    if (pct === 100) return { bg: 'rgba(251,191,36,0.25)', border: 'rgba(251,191,36,0.6)', text: '#fbbf24' };
-    if (pct >= 98) return { bg: 'rgba(52,211,153,0.2)', border: 'rgba(52,211,153,0.5)', text: '#34d399' };
-    if (pct >= 93) return { bg: 'rgba(96,165,250,0.2)', border: 'rgba(96,165,250,0.5)', text: '#60a5fa' };
-    if (pct >= 82) return { bg: 'rgba(129,140,248,0.15)', border: 'rgba(129,140,248,0.4)', text: '#818cf8' };
-    if (pct >= 67) return { bg: 'rgba(167,139,250,0.12)', border: 'rgba(167,139,250,0.3)', text: '#a78bfa' };
-    return { bg: 'rgba(255,255,255,0.04)', border: 'rgba(255,255,255,0.1)', text: '#9ca3af' };
+  const [aIV, setAIV]     = React.useState(15);
+  const [dIV, setDIV]     = React.useState(15);
+  const [hIV, setHIV]     = React.useState(15);
+  const [inputCP, setInputCP]       = React.useState('');
+  const [inputLv, setInputLv]       = React.useState('');
+  const [lookupRes, setLookupRes]   = React.useState(null);
+  const [lookupBusy, setLookupBusy] = React.useState(false);
+  const cp    = React.useMemo(()=>goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,aIV,dIV,hIV,level):0,[goStats,level,aIV,dIV,hIV]);
+  const hp    = React.useMemo(()=>goStats?calcHP(goStats.hp,hIV,level):0,[goStats,hIV,level]);
+  const maxCP = React.useMemo(()=>goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,50):0,[goStats]);
+  const pct   = maxCP>0?Math.min(100,(cp/maxCP)*100):0;
+  const ivColor = p => p===100?'#fbbf24':p>=98?'#34d399':p>=93?'#60a5fa':p>=82?'#818cf8':'#9ca3af';
+  const runLookup = ()=>{
+    const t=parseInt(inputCP); if(!goStats||!t||t<10) return;
+    setLookupBusy(true); setLookupRes(null);
+    setTimeout(()=>{
+      let r=reverseLookupCP(goStats,t);
+      if(inputLv){ const lv=parseFloat(inputLv); r=r.filter(x=>x.level===lv); }
+      r.sort((a,b)=>b.ivPct-a.ivPct);
+      setLookupRes(r); setLookupBusy(false);
+    },10);
   };
-
-  const getIVLabel = (pct) => {
-    if (pct === 100) return { label: '100%', color: '#fbbf24' };
-    if (pct >= 98) return { label: '98%+', color: '#34d399' };
-    if (pct >= 93) return { label: '93%+', color: '#60a5fa' };
-    if (pct >= 82) return { label: '82%+', color: '#818cf8' };
-    if (pct >= 67) return { label: '67%+', color: '#a78bfa' };
-    return { label: 'Low', color: '#6b7280' };
-  };
-
-  const totalCount = allRows.length; // always 4096
-
   if (!pokemon) return (
     <div className="flex flex-col items-center justify-center h-48 text-gray-600 gap-3">
-      <p className="text-sm">Select a Pokémon to view the IV chart</p>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/></svg>
+      <p className="text-sm">Select a Pokémon to calculate CP</p>
     </div>
   );
-
   return (
     <div className="animate-slide-up space-y-4">
-      {/* Controls */}
-      <div className="space-y-3">
-        {/* Level slider */}
-        <div className="glass rounded-xl p-4 space-y-2">
-          <div className="flex justify-between items-center">
-            <label className="text-gray-300 text-sm font-semibold">Level</label>
-            <span className="text-indigo-400 font-bold text-sm bg-indigo-500/20 px-2 py-0.5 rounded-lg">{level}</span>
-          </div>
-          <input type="range" min="1" max="50" step="0.5" value={level}
-            onChange={e => setLevel(parseFloat(e.target.value))}
-            className="slider-thumb w-full"
-            style={{ background: `linear-gradient(90deg, #6366f1 ${((level-1)/49)*100}%, rgba(255,255,255,0.1) ${((level-1)/49)*100}%)` }} />
-          <div className="flex justify-between text-gray-600 text-xs"><span>1</span><span>25</span><span>50</span></div>
-        </div>
-
-        {/* CP Range filter */}
-        <div className="glass rounded-xl p-4">
-          <p className="text-gray-300 text-sm font-semibold mb-2">Filter by CP Range</p>
-          <div className="flex gap-2 items-center">
-            <input type="number" value={minCP} onChange={e => setMinCP(e.target.value)} placeholder="Min CP"
-              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-            <span className="text-gray-600">–</span>
-            <input type="number" value={maxCP} onChange={e => setMaxCP(e.target.value)} placeholder="Max CP"
-              className="flex-1 bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-            <button onClick={() => { setMinCP(''); setMaxCP(''); }}
-              className="px-3 py-2 glass rounded-lg text-gray-400 hover:text-white text-xs transition-colors">✕</button>
-          </div>
-        </div>
-
-        {/* Quick IV tier filters */}
-        <div className="flex flex-wrap gap-2">
-          {[
-            ['All', null, '#6b7280'],
-            ['★ Hundo (15/15/15)', 'hundo', '#fbbf24'],
-            ['☆ Lucky (12+)', 'lucky', '#34d399'],
-            ['≥98%', 'great', '#60a5fa'],
-            ['≥82%', 'ultra', '#818cf8'],
-          ].map(([label, val, color]) => (
-            <button key={label} onClick={() => setHighlightIV(val)}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200"
-              style={{
-                background: highlightIV === val ? color + '33' : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${highlightIV === val ? color : 'rgba(255,255,255,0.1)'}`,
-                color: highlightIV === val ? color : '#9ca3af'
-              }}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Sort + Show count */}
-        <div className="flex gap-2 flex-wrap items-center">
-          <span className="text-gray-500 text-xs">Sort:</span>
-          {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v]) => (
-            <button key={v} onClick={() => setSortBy(v)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${sortBy===v ? 'bg-indigo-600 text-white' : 'glass text-gray-400 hover:text-white'}`}>
-              {l}
-            </button>
-          ))}
-          <span className="ml-auto text-gray-600 text-xs">Showing {filtered.length} of {allRows.filter(r => {
-            const lo = parseInt(minCP)||0, hi = parseInt(maxCP)||Infinity;
-            const cpOk = r.cp >= lo && r.cp <= hi;
-            const prefOk = !filterPerfect || (r.a===15&&r.d===15&&r.h===15);
-            return cpOk && prefOk;
-          }).length}</span>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-2">
-        {[
-          ['100% (Hundo)', '#fbbf24'],
-          ['98%+ (Near)', '#34d399'],
-          ['93%+', '#60a5fa'],
-          ['82%+', '#818cf8'],
-          ['67%+', '#a78bfa'],
-          ['Below', '#6b7280'],
-        ].map(([label, color]) => (
-          <div key={label} className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-sm" style={{ background: color + '55', border: `1px solid ${color}` }} />
-            <span className="text-gray-500 text-xs">{label}</span>
-          </div>
+      <div className="flex rounded-xl overflow-hidden border border-white/10">
+        {[['calc','⚡ Calculate CP'],['lookup','🔍 CP → IVs']].map(([id,lbl])=>(
+          <button key={id} onClick={()=>setTab(id)}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-all ${tab===id?'tab-active text-white':'text-gray-500 hover:text-gray-300 bg-white/5'}`}>{lbl}</button>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="glass rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-white/10" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                <th className="px-3 py-2.5 text-left text-gray-400 font-semibold w-10">#</th>
-                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">IV</th>
-                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">ATK</th>
-                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">DEF</th>
-                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">HP IV</th>
-                <th className="px-3 py-2.5 text-center text-red-400 font-semibold">CP</th>
-                <th className="px-3 py-2.5 text-center text-green-400 font-semibold">HP</th>
-                <th className="px-3 py-2.5 text-center text-gray-400 font-semibold">Quality</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row, i) => {
-                const { bg, border, text } = getIVColor(row.ivPct);
-                const { label: qualLabel, color: qualColor } = getIVLabel(row.ivPct);
-                const isHundo = row.a === 15 && row.d === 15 && row.h === 15;
-                return (
-                  <tr key={`${row.a}-${row.d}-${row.h}`}
-                    className="border-b transition-colors hover:bg-white/5"
-                    style={{ borderColor: 'rgba(255,255,255,0.05)', background: bg }}>
-                    <td className="px-3 py-2 text-gray-600">{i + 1}</td>
-                    <td className="px-3 py-2 text-center font-bold" style={{ color: text }}>
-                      {row.ivPct}%
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="font-mono font-semibold" style={{ color: row.a === 15 ? '#f87171' : row.a >= 13 ? '#fca5a5' : '#9ca3af' }}>{row.a}</span>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="font-mono font-semibold" style={{ color: row.d === 15 ? '#60a5fa' : row.d >= 13 ? '#93c5fd' : '#9ca3af' }}>{row.d}</span>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="font-mono font-semibold" style={{ color: row.h === 15 ? '#34d399' : row.h >= 13 ? '#6ee7b7' : '#9ca3af' }}>{row.h}</span>
-                    </td>
-                    <td className="px-3 py-2 text-center font-bold text-white">{row.cp.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center text-green-400 font-semibold">{row.hp}</td>
-                    <td className="px-3 py-2 text-center">
-                      <span className="px-2 py-0.5 rounded-full text-xs font-semibold"
-                        style={{ background: qualColor + '22', color: qualColor, border: `1px solid ${qualColor}44` }}>
-                        {isHundo ? '⭐ Perfect' : qualLabel}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filtered.length === 0 && (
-            <div className="py-10 text-center text-gray-600 text-sm">
-              No IV combinations match your filters
+      {tab==='calc'&&(<>
+        <div className="cp-display rounded-2xl p-5 text-center">
+          <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Combat Power</p>
+          <p className="text-6xl font-black text-white tracking-tight">{cp.toLocaleString()}</p>
+          <div className="mt-3 stat-bar max-w-xs mx-auto">
+            <div className="stat-fill" style={{width:`${pct}%`,background:'linear-gradient(90deg,#6366f1,#a855f7,#ec4899)'}} />
+          </div>
+          <p className="text-gray-500 text-xs mt-1">{pct.toFixed(1)}% of max CP ({maxCP.toLocaleString()})</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[['Attack',goStats.attack+aIV,'#f87171'],['Defense',goStats.defense+dIV,'#60a5fa'],['HP',hp,'#34d399']].map(([l,v,c])=>(
+            <div key={l} className="glass rounded-xl p-2.5" style={{border:`1px solid ${c}30`}}>
+              <p className="text-xs font-medium" style={{color:c}}>{l}</p>
+              <p className="text-white font-bold text-lg">{v}</p>
+            </div>
+          ))}
+        </div>
+        <Slider label="Level" value={level} onChange={setLevel} min={1} max={50} step={0.5} color="#6366f1" showInput={true} />
+        <IVSlider label="Attack IV"  value={aIV} onChange={setAIV} color="#f87171" />
+        <IVSlider label="Defense IV" value={dIV} onChange={setDIV} color="#60a5fa" />
+        <IVSlider label="HP IV"      value={hIV} onChange={setHIV} color="#34d399" />
+      </>)}
+
+      {tab==='lookup'&&(
+        <div className="space-y-4">
+          <p className="text-gray-400 text-sm">Enter a CP value (and optionally a level) to find all matching IV combinations.</p>
+          <div className="glass rounded-xl p-4 space-y-3">
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="text-gray-400 text-xs font-semibold block mb-1">CP Value</label>
+                <input type="number" value={inputCP} onChange={e=>setInputCP(e.target.value)} onKeyDown={e=>e.key==='Enter'&&runLookup()}
+                  placeholder="e.g. 2532" className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+              </div>
+              <div className="w-28">
+                <label className="text-gray-400 text-xs font-semibold block mb-1">Level (optional)</label>
+                <input type="number" value={inputLv} onChange={e=>setInputLv(e.target.value)} placeholder="e.g. 20" min="1" max="50" step="0.5"
+                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+              </div>
+            </div>
+            <button onClick={runLookup} disabled={!inputCP||lookupBusy}
+              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
+              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)'}}>
+              {lookupBusy?'Searching…':'🔍 Find IVs'}
+            </button>
+          </div>
+          {lookupBusy&&<div className="flex justify-center py-6"><LoadingSpinner /></div>}
+          {lookupRes!==null&&!lookupBusy&&(
+            <div className="glass rounded-xl overflow-hidden">
+              {lookupRes.length===0?(
+                <div className="py-8 text-center text-gray-500 text-sm">
+                  No IV combinations produce CP {inputCP}{inputLv?` at level ${inputLv}`:''}.
+                  <br/><span className="text-gray-600 text-xs">Try a different CP or remove the level filter.</span>
+                </div>
+              ):(
+                <>
+                  <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between" style={{background:'rgba(255,255,255,0.04)'}}>
+                    <p className="text-white text-sm font-semibold">CP {inputCP} → {lookupRes.length} match{lookupRes.length!==1?'es':''}</p>
+                    <p className="text-gray-500 text-xs">sorted by IV%</p>
+                  </div>
+                  <table className="w-full text-xs">
+                    <thead><tr className="border-b border-white/10" style={{background:'rgba(255,255,255,0.03)'}}>
+                      <th className="px-3 py-2 text-center text-gray-500">Lv</th>
+                      <th className="px-3 py-2 text-center text-gray-500">IV%</th>
+                      <th className="px-3 py-2 text-center text-red-400">ATK</th>
+                      <th className="px-3 py-2 text-center text-blue-400">DEF</th>
+                      <th className="px-3 py-2 text-center text-green-400">HP</th>
+                      <th className="px-3 py-2 text-center text-gray-400">In-game HP</th>
+                    </tr></thead>
+                    <tbody>
+                      {lookupRes.map((r,i)=>{
+                        const c=ivColor(r.ivPct); const hun=r.a===15&&r.d===15&&r.h===15;
+                        return (
+                          <tr key={i} className="border-b hover:bg-white/5 transition-colors"
+                            style={{borderColor:'rgba(255,255,255,0.05)',background:hun?'rgba(251,191,36,0.08)':''}}>
+                            <td className="px-3 py-2 text-center text-gray-300 font-semibold">{r.level}</td>
+                            <td className="px-3 py-2 text-center font-bold" style={{color:c}}>{hun?'⭐':''}{r.ivPct}%</td>
+                            <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:r.a===15?'#f87171':r.a>=13?'#fca5a5':'#9ca3af'}}>{r.a}</td>
+                            <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:r.d===15?'#60a5fa':r.d>=13?'#93c5fd':'#9ca3af'}}>{r.d}</td>
+                            <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:r.h===15?'#34d399':r.h>=13?'#6ee7b7':'#9ca3af'}}>{r.h}</td>
+                            <td className="px-3 py-2 text-center text-green-400">{calcHP(goStats.hp,r.h,r.level)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </>
+              )}
             </div>
           )}
         </div>
-      </div>
-
-      {/* Show more button */}
-      {showTop < allRows.length && (
-        <button onClick={() => setShowTop(t => t + 100)}
-          className="w-full py-2.5 glass rounded-xl text-gray-400 hover:text-white text-sm transition-colors hover:bg-white/10">
-          Show more ({allRows.length - showTop} remaining)
-        </button>
       )}
     </div>
   );
 }
 
-// ===================== MAIN POKEMON CARD =====================
+// ── RAID IV CHART ─────────────────────────────────────────────────────────
+function RaidIVChart({ pokemon }) {
+  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
+  const types   = pokemon?.types?.map(t=>t.type.name)||[];
+  const weathers = React.useMemo(()=>getWeatherForTypes(types),[types.join(',')]);
+  const [encKey, setEncKey]   = React.useState('raid');
+  const [minCP, setMinCP]     = React.useState('');
+  const [maxCP, setMaxCP]     = React.useState('');
+  const [ivFilter, setIVF]    = React.useState('all');
+  const [sortBy, setSort]     = React.useState('iv');
+  const [showTop, setShowTop] = React.useState(50);
+  const enc = ENCOUNTER_TYPES[encKey];
+  const allRows = React.useMemo(()=>{
+    if(!goStats) return [];
+    const rows=[]; const fl=enc.floor;
+    for(let a=15;a>=fl;a--) for(let d=15;d>=fl;d--) for(let h=15;h>=fl;h--){
+      rows.push({a,d,h,
+        cpN: calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,enc.level),
+        cpB: enc.hasBoosted?calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,enc.boostedLevel):null,
+        hpN: calcHP(goStats.hp,h,enc.level),
+        ivPct: Math.round(((a+d+h)/45)*100),
+      });
+    }
+    return rows;
+  },[goStats,encKey]);
+  const filtered = React.useMemo(()=>{
+    let r=allRows;
+    const lo=parseInt(minCP)||0, hi=parseInt(maxCP)||Infinity;
+    if(lo||hi<Infinity) r=r.filter(x=>(enc.hasBoosted?[x.cpN,x.cpB]:[x.cpN]).some(v=>v>=lo&&v<=hi));
+    if(ivFilter==='hundo') r=r.filter(x=>x.a===15&&x.d===15&&x.h===15);
+    else if(ivFilter==='lucky') r=r.filter(x=>x.a>=12&&x.d>=12&&x.h>=12);
+    else if(ivFilter==='98')    r=r.filter(x=>x.ivPct>=98);
+    else if(ivFilter==='93')    r=r.filter(x=>x.ivPct>=93);
+    const km={iv:'ivPct',cp:'cpN',atk:'a',def:'d',hp:'h'};
+    r=[...r].sort((a,b)=>b[km[sortBy]||'ivPct']-a[km[sortBy]||'ivPct']);
+    return r.slice(0,showTop);
+  },[allRows,minCP,maxCP,ivFilter,sortBy,showTop]);
+  const ivStyle = p => p===100?{c:'#fbbf24',bg:'rgba(251,191,36,0.15)'}:p>=98?{c:'#34d399',bg:'rgba(52,211,153,0.1)'}:p>=93?{c:'#60a5fa',bg:'rgba(96,165,250,0.1)'}:p>=82?{c:'#818cf8',bg:'rgba(129,140,248,0.08)'}:{c:'#9ca3af',bg:'transparent'};
+  const ivC = (v,fl) => v===15?'#f87171':v>=13?'#fca5a5':v===fl?'#6b7280':'#d1d5db';
+  const hundoN = goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,enc.level):0;
+  const hundoB = goStats&&enc.hasBoosted?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,enc.boostedLevel):0;
+  if(!pokemon) return <div className="py-12 text-center text-gray-600 text-sm">Select a Pokémon</div>;
+  return (
+    <div className="animate-slide-up space-y-4">
+      <div className="glass rounded-xl p-4 space-y-2">
+        <p className="text-gray-300 text-xs font-semibold uppercase tracking-widest">Encounter Type</p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(ENCOUNTER_TYPES).map(([k,e])=>(
+            <button key={k} onClick={()=>{setEncKey(k);setShowTop(50);}}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${encKey===k?'bg-indigo-600 text-white':'glass text-gray-400 hover:text-white'}`}>{e.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="glass rounded-xl p-3 text-center" style={{border:'1px solid rgba(251,191,36,0.3)',background:'rgba(251,191,36,0.07)'}}>
+          <p className="text-yellow-400 text-xs font-semibold">⭐ Hundo (Lv{enc.level})</p>
+          <p className="text-white font-black text-xl">{hundoN.toLocaleString()}</p>
+          <p className="text-gray-500 text-xs">15/15/15</p>
+        </div>
+        {enc.hasBoosted?(
+          <div className="glass rounded-xl p-3 text-center" style={{border:'1px solid rgba(99,102,241,0.3)',background:'rgba(99,102,241,0.07)'}}>
+            <p className="text-indigo-400 text-xs font-semibold">🌤️ Boosted Hundo (Lv{enc.boostedLevel})</p>
+            <p className="text-white font-black text-xl">{hundoB.toLocaleString()}</p>
+            {weathers.length>0&&<p className="text-gray-500 text-xs truncate">{weathers.join(' / ')}</p>}
+          </div>
+        ):(
+          <div className="glass rounded-xl p-3 text-center">
+            <p className="text-gray-500 text-xs font-semibold">IV Floor</p>
+            <p className="text-white font-black text-xl">{enc.floor}/{enc.floor}/{enc.floor}</p>
+            <p className="text-gray-600 text-xs">Catch Lv{enc.level}</p>
+          </div>
+        )}
+      </div>
+      {enc.hasBoosted&&weathers.length>0&&(
+        <div className="glass rounded-xl p-3" style={{border:'1px solid rgba(56,189,248,0.2)',background:'rgba(56,189,248,0.05)'}}>
+          <p className="text-sky-400 text-xs font-semibold mb-1">Weather Boost Active When:</p>
+          <div className="flex flex-wrap gap-2">{weathers.map((w,i)=><span key={i} className="text-xs text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2.5 py-1 rounded-lg">{w}</span>)}</div>
+        </div>
+      )}
+      <div className="glass rounded-xl p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-400">
+        <span>🔒 IV Floor: <strong className="text-white">{enc.floor}/{enc.floor}/{enc.floor}</strong></span>
+        <span>📊 Catch Level: <strong className="text-white">{enc.level}{enc.hasBoosted?` / ${enc.boostedLevel} (boosted)`:''}</strong></span>
+        <span>🎲 Combos: <strong className="text-white">{allRows.length.toLocaleString()}</strong></span>
+      </div>
+      <div className="space-y-2">
+        <div className="flex gap-2 items-center flex-wrap">
+          <input type="number" value={minCP} onChange={e=>setMinCP(e.target.value)} placeholder="Min CP"
+            className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+          <span className="text-gray-600">–</span>
+          <input type="number" value={maxCP} onChange={e=>setMaxCP(e.target.value)} placeholder="Max CP"
+            className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+          {(minCP||maxCP)&&<button onClick={()=>{setMinCP('');setMaxCP('');}} className="px-2 py-1.5 glass rounded-lg text-gray-500 hover:text-white text-xs transition-colors">✕</button>}
+          <span className="ml-auto text-gray-600 text-xs">{filtered.length} results</span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {[['All','all','#6b7280'],['⭐ Hundo','hundo','#fbbf24'],['Lucky (12+)','lucky','#34d399'],['≥98%','98','#60a5fa'],['≥93%','93','#818cf8']].map(([l,v,c])=>(
+            <button key={v} onClick={()=>setIVF(v)}
+              className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+              style={ivFilter===v?{background:c+'33',color:c,border:`1px solid ${c}55`}:{background:'rgba(255,255,255,0.05)',color:'#6b7280',border:'1px solid rgba(255,255,255,0.1)'}}>
+              {l}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-1.5 items-center">
+          <span className="text-gray-600 text-xs">Sort:</span>
+          {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v])=>(
+            <button key={v} onClick={()=>setSort(v)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${sortBy===v?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>{l}</button>
+          ))}
+        </div>
+      </div>
+      <div className="glass rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-white/10" style={{background:'rgba(255,255,255,0.04)'}}>
+              <th className="px-2 py-2.5 text-left text-gray-500">#</th>
+              <th className="px-2 py-2.5 text-center text-gray-400">IV%</th>
+              <th className="px-2 py-2.5 text-center text-red-400">ATK</th>
+              <th className="px-2 py-2.5 text-center text-blue-400">DEF</th>
+              <th className="px-2 py-2.5 text-center text-green-400">HP</th>
+              <th className="px-2 py-2.5 text-center text-white">CP (Lv{enc.level})</th>
+              {enc.hasBoosted&&<th className="px-2 py-2.5 text-center text-indigo-400">CP (Lv{enc.boostedLevel} 🌤️)</th>}
+              <th className="px-2 py-2.5 text-center text-green-400">HP</th>
+            </tr></thead>
+            <tbody>
+              {filtered.map((row,i)=>{
+                const {c,bg}=ivStyle(row.ivPct); const hun=row.a===15&&row.d===15&&row.h===15;
+                return (
+                  <tr key={`${row.a}-${row.d}-${row.h}`} className="border-b hover:bg-white/5 transition-colors"
+                    style={{borderColor:'rgba(255,255,255,0.05)',background:bg}}>
+                    <td className="px-2 py-2 text-gray-600">{i+1}</td>
+                    <td className="px-2 py-2 text-center font-bold" style={{color:c}}>{hun?'⭐':''}{row.ivPct}%</td>
+                    <td className="px-2 py-2 text-center font-mono font-semibold" style={{color:ivC(row.a,enc.floor)}}>{row.a}</td>
+                    <td className="px-2 py-2 text-center font-mono font-semibold" style={{color:ivC(row.d,enc.floor)}}>{row.d}</td>
+                    <td className="px-2 py-2 text-center font-mono font-semibold" style={{color:ivC(row.h,enc.floor)}}>{row.h}</td>
+                    <td className="px-2 py-2 text-center font-bold text-white">{row.cpN.toLocaleString()}</td>
+                    {enc.hasBoosted&&<td className="px-2 py-2 text-center font-bold text-indigo-300">{row.cpB?.toLocaleString()}</td>}
+                    <td className="px-2 py-2 text-center text-green-400">{row.hpN}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length===0&&<div className="py-10 text-center text-gray-600 text-sm">No results match your filters</div>}
+        </div>
+      </div>
+      {showTop<allRows.length&&<button onClick={()=>setShowTop(t=>t+100)}
+        className="w-full py-2.5 glass rounded-xl text-gray-400 hover:text-white text-sm transition-colors hover:bg-white/10">
+        Show more ({allRows.length-showTop} remaining)</button>}
+    </div>
+  );
+}
+
+// ── IV CHART ──────────────────────────────────────────────────────────────
+function IVChart({ pokemon }) {
+  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
+  const [level, setLevel]     = React.useState(40);
+  const [minCP, setMinCP]     = React.useState('');
+  const [maxCP, setMaxCP]     = React.useState('');
+  const [ivFilter, setIVF]    = React.useState('all');
+  const [sortBy, setSort]     = React.useState('iv');
+  const [showTop, setShowTop] = React.useState(50);
+  const allRows = React.useMemo(()=>{
+    if(!goStats) return [];
+    const rows=[];
+    for(let a=15;a>=0;a--) for(let d=15;d>=0;d--) for(let h=15;h>=0;h--)
+      rows.push({a,d,h,cp:calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,level),hp:calcHP(goStats.hp,h,level),ivPct:Math.round(((a+d+h)/45)*100)});
+    return rows;
+  },[goStats,level]);
+  const filtered = React.useMemo(()=>{
+    let r=allRows;
+    const lo=parseInt(minCP)||0, hi=parseInt(maxCP)||Infinity;
+    if(lo||hi<Infinity) r=r.filter(x=>x.cp>=lo&&x.cp<=hi);
+    if(ivFilter==='hundo') r=r.filter(x=>x.a===15&&x.d===15&&x.h===15);
+    else if(ivFilter==='lucky') r=r.filter(x=>x.a>=12&&x.d>=12&&x.h>=12);
+    else if(ivFilter==='98')    r=r.filter(x=>x.ivPct>=98);
+    else if(ivFilter==='82')    r=r.filter(x=>x.ivPct>=82);
+    const km={iv:'ivPct',cp:'cp',atk:'a',def:'d',hp:'h'};
+    r=[...r].sort((a,b)=>b[km[sortBy]||'ivPct']-a[km[sortBy]||'ivPct']);
+    return r.slice(0,showTop);
+  },[allRows,minCP,maxCP,ivFilter,sortBy,showTop]);
+  const ivStyle = p => p===100?{c:'#fbbf24',bg:'rgba(251,191,36,0.15)'}:p>=98?{c:'#34d399',bg:'rgba(52,211,153,0.1)'}:p>=93?{c:'#60a5fa',bg:'rgba(96,165,250,0.1)'}:p>=82?{c:'#818cf8',bg:'rgba(129,140,248,0.08)'}:{c:'#9ca3af',bg:'transparent'};
+  const maxCP50 = goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,50):0;
+  if(!pokemon) return <div className="py-12 text-center text-gray-600 text-sm">Select a Pokémon</div>;
+  return (
+    <div className="animate-slide-up space-y-4">
+      <Slider label="Level" value={level} onChange={setLevel} min={1} max={50} step={0.5} color="#6366f1" showInput={true} />
+      <div className="flex gap-2 items-center flex-wrap">
+        <input type="number" value={minCP} onChange={e=>setMinCP(e.target.value)} placeholder="Min CP"
+          className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+        <span className="text-gray-600">–</span>
+        <input type="number" value={maxCP} onChange={e=>setMaxCP(e.target.value)} placeholder="Max CP"
+          className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+        {(minCP||maxCP)&&<button onClick={()=>{setMinCP('');setMaxCP('');}} className="px-2 py-1.5 glass rounded-lg text-gray-500 hover:text-white text-xs">✕</button>}
+        <span className="ml-auto text-gray-600 text-xs">Max CP: {maxCP50.toLocaleString()}</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {[['All','all','#6b7280'],['⭐ Hundo','hundo','#fbbf24'],['Lucky (12+)','lucky','#34d399'],['≥98%','98','#60a5fa'],['≥82%','82','#818cf8']].map(([l,v,c])=>(
+          <button key={v} onClick={()=>setIVF(v)}
+            className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
+            style={ivFilter===v?{background:c+'33',color:c,border:`1px solid ${c}55`}:{background:'rgba(255,255,255,0.05)',color:'#6b7280',border:'1px solid rgba(255,255,255,0.1)'}}>
+            {l}
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-1.5 items-center flex-wrap">
+        <span className="text-gray-600 text-xs">Sort:</span>
+        {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v])=>(
+          <button key={v} onClick={()=>setSort(v)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${sortBy===v?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>{l}</button>
+        ))}
+        <span className="ml-auto text-gray-600 text-xs">{filtered.length} / {allRows.length.toLocaleString()}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {[['100% Hundo','#fbbf24'],['98%+','#34d399'],['93%+','#60a5fa'],['82%+','#818cf8'],['Lower','#6b7280']].map(([l,c])=>(
+          <div key={l} className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm" style={{background:c+'55',border:`1px solid ${c}`}}/><span className="text-gray-500 text-xs">{l}</span></div>
+        ))}
+      </div>
+      <div className="glass rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead><tr className="border-b border-white/10" style={{background:'rgba(255,255,255,0.04)'}}>
+              <th className="px-3 py-2.5 text-left text-gray-500 w-8">#</th>
+              <th className="px-3 py-2.5 text-center text-gray-400">IV%</th>
+              <th className="px-3 py-2.5 text-center text-red-400">ATK</th>
+              <th className="px-3 py-2.5 text-center text-blue-400">DEF</th>
+              <th className="px-3 py-2.5 text-center text-green-400">HP</th>
+              <th className="px-3 py-2.5 text-center text-white">CP</th>
+              <th className="px-3 py-2.5 text-center text-green-400">HP</th>
+            </tr></thead>
+            <tbody>
+              {filtered.map((row,i)=>{
+                const {c,bg}=ivStyle(row.ivPct); const hun=row.a===15&&row.d===15&&row.h===15;
+                return (
+                  <tr key={`${row.a}-${row.d}-${row.h}`} className="border-b hover:bg-white/5 transition-colors"
+                    style={{borderColor:'rgba(255,255,255,0.05)',background:bg}}>
+                    <td className="px-3 py-2 text-gray-600">{i+1}</td>
+                    <td className="px-3 py-2 text-center font-bold" style={{color:c}}>{hun?'⭐':''}{row.ivPct}%</td>
+                    <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:row.a===15?'#f87171':row.a>=13?'#fca5a5':'#9ca3af'}}>{row.a}</td>
+                    <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:row.d===15?'#60a5fa':row.d>=13?'#93c5fd':'#9ca3af'}}>{row.d}</td>
+                    <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:row.h===15?'#34d399':row.h>=13?'#6ee7b7':'#9ca3af'}}>{row.h}</td>
+                    <td className="px-3 py-2 text-center font-bold text-white">{row.cp.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-center text-green-400">{row.hp}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {filtered.length===0&&<div className="py-10 text-center text-gray-600 text-sm">No results match your filters</div>}
+        </div>
+      </div>
+      {showTop<allRows.length&&<button onClick={()=>setShowTop(t=>t+100)}
+        className="w-full py-2.5 glass rounded-xl text-gray-400 hover:text-white text-sm transition-colors hover:bg-white/10">
+        Show more ({allRows.length-showTop} remaining)</button>}
+    </div>
+  );
+}
+
+// ── RAID COUNTERS ─────────────────────────────────────────────────────────
+function CounterCard({ attacker, rank }) {
+  const [poke, setPoke] = React.useState(null);
+  React.useEffect(()=>{ fetchPokemon(attacker.name).then(setPoke).catch(()=>{}); },[attacker.name]);
+  const effLabel = attacker.eff>=3.9?'4×':attacker.eff>=2.5?'2.56×':attacker.eff>=1.95?'2×':'1.6×';
+  const effColor = attacker.eff>=3.9?'#f87171':attacker.eff>=2.5?'#fb923c':attacker.eff>=1.95?'#fbbf24':'#a3e635';
+  const sprite   = poke?.sprites?.other?.home?.front_default || poke?.sprites?.front_default || '';
+  return (
+    <div className="glass rounded-xl p-3 flex items-center gap-3 animate-fade-in">
+      <span className="text-gray-600 text-xs font-bold w-5 text-right shrink-0">#{rank}</span>
+      <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+        {poke ? (
+          <img src={sprite} width="56" height="56" className="object-contain pokemon-img" alt={attacker.name}
+            style={{filter:'drop-shadow(0 2px 8px rgba(0,0,0,0.5))'}} />
+        ) : <LoadingSpinner size="sm" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-white font-bold text-sm truncate">{formatDisplayName(attacker.name)}</p>
+        <div className="flex gap-1 mt-0.5 flex-wrap">{attacker.types.map(t=><TypeBadge key={t} type={t} />)}</div>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-xs font-bold mb-1" style={{color:effColor}}>{effLabel}</p>
+        <TypeBadge type={attacker.bestMoveType} />
+      </div>
+    </div>
+  );
+}
+
+function RaidCounters({ pokemon }) {
+  const types    = pokemon?.types?.map(t=>t.type.name)||[];
+  const counters = React.useMemo(()=>scoredCounters(types),[types.join(',')]);
+  if (!pokemon) return null;
+  return (
+    <div className="animate-slide-up space-y-4">
+      <div className="glass rounded-xl p-3" style={{background:'rgba(99,102,241,0.08)',border:'1px solid rgba(99,102,241,0.2)'}}>
+        <p className="text-gray-400 text-xs mb-1.5">Defending types</p>
+        <div className="flex gap-1.5 flex-wrap">{types.map(t=><TypeBadge key={t} type={t} size="lg" />)}</div>
+      </div>
+      <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold">Top 10 Counters</p>
+      <div className="space-y-2">
+        {counters.length===0
+          ? <p className="text-gray-600 text-sm text-center py-6">No strong counters found.</p>
+          : counters.map((c,i)=><CounterCard key={c.name} attacker={c} rank={i+1} />)}
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs">
+        {[['4×','#f87171'],['2.56×','#fb923c'],['2×','#fbbf24'],['1.6×','#a3e635']].map(([l,c])=>(
+          <div key={l} className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-sm" style={{background:c+'66',border:`1px solid ${c}`}} />
+            <span className="text-gray-500">{l} effectiveness</span>
+          </div>
+        ))}
+      </div>
+      <p className="text-gray-700 text-xs text-center">Based on type effectiveness of best STAB move type.</p>
+    </div>
+  );
+}
+
+// ── EVOLUTION CHAIN ───────────────────────────────────────────────────────
+function EvoNode({ name, isShiny, is3D, onSelect, isActive }) {
+  const [poke, setPoke] = React.useState(null);
+  React.useEffect(()=>{ fetchPokemon(name).then(setPoke).catch(()=>{}); },[name]);
+  return (
+    <button onClick={()=>onSelect(name)}
+      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 hover:bg-white/10 ${isActive?'bg-white/15 ring-2 ring-indigo-500':''}`}>
+      {poke ? <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={64} />
+             : <div className="w-16 h-16 flex items-center justify-center"><LoadingSpinner size="sm" /></div>}
+      <span className="text-gray-300 text-xs font-medium">{capitalize(name)}</span>
+      {poke&&<span className="text-gray-600 text-xs">#{padId(poke.id)}</span>}
+    </button>
+  );
+}
+function EvoArrow({ detail }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-1 min-w-[56px]">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-indigo-400">
+        <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      {detail&&<span className="text-gray-600 text-xs text-center mt-0.5 max-w-[56px] leading-tight">{detail}</span>}
+    </div>
+  );
+}
+function parseEvoChain(chain) {
+  const stages=[];
+  const walk=(node,s)=>{
+    if(!stages[s]) stages[s]=[];
+    const det=node.evolution_details?.[0]; let req='';
+    if(det){
+      if(det.min_level) req=`Lv.${det.min_level}`;
+      else if(det.item) req=capitalize(det.item.name.replace(/-/g,' '));
+      else if(det.held_item) req=capitalize(det.held_item.name.replace(/-/g,' '));
+      else if(det.trigger?.name==='trade') req='Trade';
+      else if(det.min_happiness) req=`Happy(${det.min_happiness})`;
+      else req=capitalize((det.trigger?.name||'').replace(/-/g,' '));
+    }
+    stages[s].push({name:node.species.name,req});
+    node.evolves_to.forEach(n=>walk(n,s+1));
+  };
+  walk(chain,0); return stages;
+}
+function EvolutionChain({ speciesName, isShiny, is3D, onSelect, activeName }) {
+  const [stages, setStages] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  React.useEffect(()=>{
+    if(!speciesName) return;
+    setLoading(true); setStages(null);
+    fetchSpecies(speciesName)
+      .then(sp=>sp?fetchEvoChain(sp.evolution_chain.url):null)
+      .then(chain=>{ if(chain) setStages(parseEvoChain(chain.chain)); })
+      .catch(()=>{}).finally(()=>setLoading(false));
+  },[speciesName]);
+  if(loading) return <div className="flex justify-center py-4"><LoadingSpinner /></div>;
+  if(!stages) return null;
+  if(stages.length<=1&&stages[0]?.length<=1) return <div className="text-gray-600 text-sm text-center py-2">No evolutions</div>;
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1 py-2">
+      {stages.map((stage,si)=>(
+        <React.Fragment key={si}>
+          {si>0&&(
+            <div className="flex flex-col gap-2">
+              {stage.some(n=>n.req) ? stage.map(n=>n.req&&<EvoArrow key={n.name} detail={n.req} />) : <EvoArrow detail="" />}
+            </div>
+          )}
+          <div className={`flex flex-col gap-2 ${stage.length>1?'justify-center':''}`}>
+            {stage.map(n=><EvoNode key={n.name} name={n.name} isShiny={isShiny} is3D={is3D} onSelect={onSelect} isActive={n.name===activeName} />)}
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+// ── COMPARE PANEL ─────────────────────────────────────────────────────────
+function ComparePanel({ isShiny, is3D }) {
+  const [pokeA, setPokeA] = React.useState(null);
+  const [pokeB, setPokeB] = React.useState(null);
+  const [ldA, setLdA]     = React.useState(false);
+  const [ldB, setLdB]     = React.useState(false);
+  const load = (name, set, setLd) => { setLd(true); fetchPokemon(name).then(set).catch(()=>set(null)).finally(()=>setLd(false)); };
+  const sA = pokeA?getGoStats(pokeA):null, sB = pokeB?getGoStats(pokeB):null;
+  const maxA = sA?calcCP(sA.attack,sA.defense,sA.hp,15,15,15,50):0;
+  const maxB = sB?calcCP(sB.attack,sB.defense,sB.hp,15,15,15,50):0;
+  const bar = (vA,vB,label) => {
+    const mx=Math.max(vA||0,vB||0,1), pA=((vA||0)/mx)*100, pB=((vB||0)/mx)*100;
+    const w=vA>vB?'A':vA<vB?'B':null;
+    return (
+      <div key={label} className="flex items-center gap-2 mb-1.5">
+        <span className={`text-xs w-8 text-right font-bold ${w==='A'?'text-blue-400':'text-gray-500'}`}>{(vA||0).toLocaleString()}</span>
+        <div className="flex-1 flex gap-0.5">
+          <div className="stat-bar flex-1"><div className="stat-fill" style={{width:`${pA}%`,background:w==='A'?'linear-gradient(90deg,#6366f1,#818cf8)':'linear-gradient(90deg,#4b5563,#6b7280)',marginLeft:'auto'}} /></div>
+          <div className="text-gray-600 text-xs w-20 text-center shrink-0 leading-tight">{label}</div>
+          <div className="stat-bar flex-1"><div className="stat-fill" style={{width:`${pB}%`,background:w==='B'?'linear-gradient(90deg,#ec4899,#f43f5e)':'linear-gradient(90deg,#4b5563,#6b7280)'}} /></div>
+        </div>
+        <span className={`text-xs w-8 font-bold ${w==='B'?'text-pink-400':'text-gray-500'}`}>{(vB||0).toLocaleString()}</span>
+      </div>
+    );
+  };
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="grid grid-cols-2 gap-3">
+        {[[pokeA,setPokeA,ldA,setLdA,sA,maxA,'A'],[pokeB,setPokeB,ldB,setLdB,sB,maxB,'B']].map(([poke,set,ld,setLd,stats,maxCP,slot])=>(
+          <div key={slot} className="glass rounded-2xl p-4 space-y-3">
+            <SearchBar onSelect={name=>load(name,set,setLd)} placeholder={`Search Pokémon ${slot}…`} />
+            {ld&&<div className="flex justify-center py-4"><LoadingSpinner /></div>}
+            {poke&&!ld&&(
+              <div className="flex flex-col items-center gap-2 animate-fade-in">
+                <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={96} />
+                <p className="text-white font-bold text-base">{formatDisplayName(poke.name)}</p>
+                <p className="text-gray-500 text-xs">#{padId(poke.id)}</p>
+                <div className="flex gap-1 flex-wrap justify-center">{poke.types.map(t=><TypeBadge key={t.type.name} type={t.type.name} />)}</div>
+                <div className="w-full glass rounded-xl p-3 text-center">
+                  <p className="text-gray-500 text-xs">Max CP (Lv50 15/15/15)</p>
+                  <p className="text-2xl font-black text-indigo-400">{maxCP.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            {!poke&&!ld&&(
+              <div className="flex flex-col items-center justify-center py-8 text-gray-700">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/></svg>
+                <p className="text-sm mt-2">Select Pokémon {slot}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      {pokeA&&pokeB&&(
+        <div className="glass rounded-2xl p-4 space-y-1 animate-slide-up">
+          <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3">Stat Comparison</p>
+          <p className="text-indigo-400 text-xs font-semibold mb-1">Pokémon GO Stats</p>
+          {bar(sA?.attack,  sB?.attack,  'Attack')}
+          {bar(sA?.defense, sB?.defense, 'Defense')}
+          {bar(sA?.hp,      sB?.hp,      'HP')}
+          {bar(maxA,        maxB,        'Max CP')}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── POKEMON CARD ──────────────────────────────────────────────────────────
 function PokemonCard({ pokemon, species, isShiny, is3D, shadowType, onToggleShiny, onToggle3D }) {
-  const goStats = getGoStats(pokemon);
-  const types = pokemon.types.map(t => t.type.name);
-  const mainType = types[0];
-  const typeColor = TYPE_COLORS[mainType] || '#6366f1';
-
-  const shadowColor = shadowType === 'shadow' ? '#7c3aed' : shadowType === 'purified' ? '#06b6d4' : null;
-  const shadowLabel = shadowType === 'shadow' ? '👻 Shadow' : shadowType === 'purified' ? '✨ Purified' : null;
-
-  // Shadow Pokémon get +20% ATK, -20% DEF in GO raids; Purified get +2 to all IVs floor
-  const displayAtk  = shadowType === 'shadow'   ? Math.round(goStats.attack  * 1.2) : goStats.attack;
-  const displayDef  = shadowType === 'shadow'   ? Math.round(goStats.defense * 0.8) : goStats.defense;
-  const shadowNote  = shadowType === 'shadow'   ? '(×1.2 ATK / ×0.8 DEF in raids)' :
-                      shadowType === 'purified' ? '(+2 IV floor on all stats when purified)' : null;
-
-  const spriteFilter = shadowType === 'purified'
-    ? 'brightness(1.15) saturate(0.35) contrast(1.1)'
-    : undefined;
-
+  const goStats     = getGoStats(pokemon);
+  const types       = pokemon.types.map(t=>t.type.name);
+  const typeColor   = TYPE_COLORS[types[0]]||'#6366f1';
+  const shadowColor = shadowType==='shadow'?'#7c3aed':shadowType==='purified'?'#06b6d4':null;
+  const shadowLabel = shadowType==='shadow'?'👻 Shadow':shadowType==='purified'?'✨ Purified':null;
+  const dispAtk  = shadowType==='shadow'?Math.round(goStats.attack*1.2):goStats.attack;
+  const dispDef  = shadowType==='shadow'?Math.round(goStats.defense*0.8):goStats.defense;
+  const shadowNote = shadowType==='shadow'?'(×1.2 ATK / ×0.8 DEF in raids)':shadowType==='purified'?'(+2 IV floor when purified)':null;
+  const spriteFilter = shadowType==='purified'?'saturate(0.25) brightness(1.15)':undefined;
   return (
     <div className="glass-dark rounded-2xl overflow-hidden animate-slide-up relative"
-      style={{ border: `1px solid ${shadowColor ? shadowColor + '55' : typeColor + '33'}` }}>
-      {/* Shadow/Purified banner */}
-      {shadowLabel && (
+      style={{border:`1px solid ${shadowColor?shadowColor+'55':typeColor+'33'}`}}>
+      {shadowLabel&&(
         <div className="px-5 pt-3 pb-0">
           <div className="rounded-lg px-3 py-1.5 flex items-center gap-2 text-xs font-bold"
-            style={{ background: shadowColor + '22', border: `1px solid ${shadowColor}44`, color: shadowColor }}>
+            style={{background:shadowColor+'22',border:`1px solid ${shadowColor}44`,color:shadowColor}}>
             <span>{shadowLabel}</span>
-            {shadowNote && <span className="text-xs font-normal opacity-70">{shadowNote}</span>}
+            {shadowNote&&<span className="font-normal opacity-70">{shadowNote}</span>}
           </div>
         </div>
       )}
-      {/* Header gradient */}
-      <div className="relative p-5 pb-2" style={{ background: `linear-gradient(135deg, ${typeColor}22, transparent)` }}>
+      <div className="relative p-5 pb-2" style={{background:`linear-gradient(135deg,${typeColor}22,transparent)`}}>
         <div className="flex justify-between items-start">
           <div>
             <p className="text-gray-500 text-xs font-medium">#{padId(pokemon.id)}</p>
-            <h2 className="text-white text-2xl font-black mt-0.5">
-              {formatDisplayName(pokemon.name)}
-              {shadowLabel && <span className="ml-2 text-base font-semibold" style={{color: shadowColor}}>{shadowLabel}</span>}
-            </h2>
-            {species?.genera?.find(g => g.language.name === 'en') && (
-              <p className="text-gray-500 text-xs">{species.genera.find(g => g.language.name === 'en').genus}</p>
+            <h2 className="text-white text-2xl font-black mt-0.5">{formatDisplayName(pokemon.name)}</h2>
+            {species?.genera?.find(g=>g.language.name==='en')&&(
+              <p className="text-gray-500 text-xs">{species.genera.find(g=>g.language.name==='en').genus}</p>
             )}
-            <div className="flex gap-1.5 mt-2 flex-wrap">
-              {types.map(t => <TypeBadge key={t} type={t} size="lg" />)}
-            </div>
+            <div className="flex gap-1.5 mt-2 flex-wrap">{types.map(t=><TypeBadge key={t} type={t} size="lg" />)}</div>
           </div>
           <div className="flex flex-col gap-1.5 items-end">
             <Toggle value={isShiny} onChange={onToggleShiny} label="✨ Shiny" />
-            <Toggle value={is3D} onChange={onToggle3D} label="🎮 3D" />
+            <Toggle value={is3D}    onChange={onToggle3D}    label="🎮 3D" />
           </div>
         </div>
-
-        {/* Sprite */}
         <div className="flex justify-center mt-2">
           <div className="relative">
             <div className="absolute inset-0 rounded-full blur-3xl opacity-30"
-              style={{ background: shadowType === 'shadow' ? 'radial-gradient(circle, #7c3aed 0%, #4c1d95 60%, transparent 100%)' : shadowColor ? shadowColor : typeColor }} />
-            <div style={spriteFilter ? { filter: spriteFilter } : {}}>
+              style={{background:shadowType==='shadow'?'radial-gradient(circle,#7c3aed 0%,#4c1d95 60%,transparent 100%)':shadowColor||typeColor}} />
+            <div style={spriteFilter?{filter:spriteFilter}:{}}>
               <PokemonImage pokemon={pokemon} isShiny={isShiny} is3D={is3D} shadowType={shadowType} size={160} className="relative z-10" />
             </div>
-            {shadowType === 'shadow' && (
-              <div className="absolute inset-0 pointer-events-none rounded-xl"
-                style={{ background: 'linear-gradient(160deg, rgba(88,28,235,0.4) 0%, rgba(109,40,217,0.25) 50%, rgba(0,0,0,0) 100%)', zIndex: 20 }} />
+            {shadowType==='shadow'&&(
+              <div className="absolute inset-0 pointer-events-none rounded-lg z-20"
+                style={{background:'linear-gradient(150deg,rgba(88,28,235,0.38) 0%,rgba(109,40,217,0.22) 55%,transparent 100%)'}} />
             )}
           </div>
         </div>
-
-        {isShiny && (
+        {isShiny&&(
           <div className="absolute top-3 left-1/2 -translate-x-1/2">
             <span className="text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-full px-3 py-0.5 font-semibold">✨ Shiny</span>
           </div>
         )}
       </div>
-
-      {/* CP Preview */}
       <div className="px-5 pb-4">
         <div className="grid grid-cols-3 gap-2 text-center mt-2">
-          {[['GO ATK', displayAtk, '#f87171'],['GO DEF', displayDef, '#60a5fa'],['STA', goStats.hp, '#34d399']].map(([l,v,c]) => (
-            <div key={l} className="rounded-lg p-2" style={{ background: c+'15', border: `1px solid ${c}33` }}>
-              <p className="text-xs font-semibold" style={{ color: c }}>{l}</p>
+          {[['Attack',dispAtk,'#f87171'],['Defense',dispDef,'#60a5fa'],['HP',goStats.hp,'#34d399']].map(([l,v,c])=>(
+            <div key={l} className="rounded-lg p-2" style={{background:c+'15',border:`1px solid ${c}33`}}>
+              <p className="text-xs font-semibold" style={{color:c}}>{l}</p>
               <p className="text-white font-bold text-lg">{v}</p>
             </div>
           ))}
         </div>
         <div className="mt-3 text-center">
           <p className="text-gray-600 text-xs">Max CP (Lv50 15/15/15)</p>
-          <p className="text-indigo-400 font-black text-2xl">{calcCP(goStats.attack, goStats.defense, goStats.hp, 15,15,15,50).toLocaleString()}</p>
+          <p className="text-indigo-400 font-black text-2xl">{calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,50).toLocaleString()}</p>
         </div>
       </div>
     </div>
   );
 }
 
-// ===================== MAIN APP =====================
+// ── APP ───────────────────────────────────────────────────────────────────
 function App() {
-  const [activePokemon, setActivePokemon] = React.useState(null);
-  const [activeSpecies, setActiveSpecies] = React.useState(null);
-  const [activeShadowType, setActiveShadowType] = React.useState(null); // null | 'shadow' | 'purified'
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
-  const [isShiny, setIsShiny] = React.useState(false);
-  const [is3D, setIs3D] = React.useState(true);
-  const [activeTab, setActiveTab] = React.useState('info');
-  const [mode, setMode] = React.useState('dex'); // 'dex' | 'compare'
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [showDex, setShowDex] = React.useState(false);
+  const [activePokemon, setActivePokemon]   = React.useState(null);
+  const [activeSpecies, setActiveSpecies]   = React.useState(null);
+  const [activeShadow,  setActiveShadow]    = React.useState(null);
+  const [loading, setLoading]               = React.useState(false);
+  const [error,   setError]                 = React.useState(null);
+  const [isShiny, setIsShiny]               = React.useState(false);
+  const [is3D,    setIs3D]                  = React.useState(true);
+  const [activeTab, setActiveTab]           = React.useState('info');
+  const [mode,    setMode]                  = React.useState('dex');
+  const [showDex, setShowDex]               = React.useState(false);
 
   const loadPokemon = React.useCallback(async (nameOrId) => {
-    setLoading(true);
-    setError(null);
-    setIsShiny(false);
-
-    // Strip shadow/purified suffix to get the real API name
-    let apiName = String(nameOrId).toLowerCase();
-    let shadowType = null;
-    if (apiName.endsWith('-shadow'))   { shadowType = 'shadow';   apiName = apiName.replace(/-shadow$/, ''); }
-    if (apiName.endsWith('-purified')) { shadowType = 'purified'; apiName = apiName.replace(/-purified$/, ''); }
-
+    setLoading(true); setError(null); setIsShiny(false);
+    let api = String(nameOrId).toLowerCase();
+    let shadow = null;
+    if(api.endsWith('-shadow'))   { shadow='shadow';   api=api.replace(/-shadow$/,''); }
+    if(api.endsWith('-purified')) { shadow='purified'; api=api.replace(/-purified$/,''); }
     try {
-      const poke = await fetchPokemon(apiName);
-      setActivePokemon(poke);
-      setActiveShadowType(shadowType);
-      setActiveTab('info');
-      const sp = await fetchSpecies(poke.species?.name || poke.name).catch(() => null);
+      const poke = await fetchPokemon(api);
+      setActivePokemon(poke); setActiveShadow(shadow); setActiveTab('info');
+      const sp = await fetchSpecies(poke.species?.name||poke.name).catch(()=>null);
       setActiveSpecies(sp);
-    } catch (e) {
-      setError(`Could not find "${nameOrId}". Try a different name or ID.`);
-      setActivePokemon(null);
-      setActiveSpecies(null);
-      setActiveShadowType(null);
-    } finally {
-      setLoading(false);
-    }
+    } catch {
+      setError(`Could not find "${nameOrId}". Try a name or number.`);
+      setActivePokemon(null); setActiveSpecies(null); setActiveShadow(null);
+    } finally { setLoading(false); }
   }, []);
 
-  // Load a default pokemon on startup
-  React.useEffect(() => { loadPokemon('mewtwo'); }, []);
+  React.useEffect(()=>{ loadPokemon('mewtwo'); },[]);
 
   const tabs = [
-    { id: 'info',  label: 'Info',     icon: '📋' },
-    { id: 'cp',    label: 'CP Calc',  icon: '⚡' },
-    { id: 'iv',    label: 'IV Chart', icon: '🧬' },
-    { id: 'raid',  label: 'Raid IVs', icon: '⚔️' },
-    { id: 'evo',   label: 'Evolution',icon: '🔄' },
+    { id:'info',     label:'Info',      icon:'📋' },
+    { id:'cp',       label:'CP Calc',   icon:'⚡' },
+    { id:'iv',       label:'IV Chart',  icon:'🧬' },
+    { id:'raid',     label:'Raid IVs',  icon:'⚔️' },
+    { id:'counters', label:'Counters',  icon:'🏆' },
+    { id:'evo',      label:'Evolution', icon:'🔄' },
   ];
 
   return (
-    <div className="min-h-screen text-white" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d0d1a 50%, #0a0f1a 100%)' }}>
-      {/* Header */}
+    <div className="min-h-screen text-white" style={{background:'linear-gradient(135deg,#0a0a0f 0%,#0d0d1a 50%,#0a0f1a 100%)'}}>
       <header className="glass-dark sticky top-0 z-50 px-4 py-3">
         <div className="max-w-7xl mx-auto flex items-center gap-4">
-          {/* Logo */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{background:'linear-gradient(135deg,#ef4444,#dc2626)'}}>
               <div className="w-3 h-3 rounded-full bg-white" />
             </div>
             <div className="hidden sm:block">
@@ -1741,122 +1421,88 @@ function App() {
               <p className="text-indigo-400 text-xs font-semibold">Dex &amp; CP Calculator</p>
             </div>
           </div>
-
-          {/* Search */}
-          <div className="flex-1 max-w-md">
-            <SearchBar onSelect={loadPokemon} />
-          </div>
-
-          {/* Mode toggle */}
+          <div className="flex-1 max-w-md"><SearchBar onSelect={loadPokemon} /></div>
           <div className="flex gap-2 shrink-0">
-            <button onClick={() => setMode('dex')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='dex' ? 'bg-indigo-600 text-white' : 'glass text-gray-400 hover:text-white'}`}>
-              📖 Dex
-            </button>
-            <button onClick={() => setMode('compare')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='compare' ? 'bg-pink-600 text-white' : 'glass text-gray-400 hover:text-white'}`}>
-              ⚖️ Compare
-            </button>
+            <button onClick={()=>setMode('dex')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='dex'?'bg-indigo-600 text-white':'glass text-gray-400 hover:text-white'}`}>📖 Dex</button>
+            <button onClick={()=>setMode('compare')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='compare'?'bg-pink-600 text-white':'glass text-gray-400 hover:text-white'}`}>⚖️ Compare</button>
           </div>
         </div>
       </header>
 
-      {mode === 'compare' ? (
+      {mode==='compare' ? (
         <main className="max-w-5xl mx-auto px-4 py-6">
           <div className="mb-4">
             <h2 className="text-white font-black text-xl">Side-by-Side Comparison</h2>
-            <p className="text-gray-500 text-sm">Compare stats, CP, and types between two Pokémon</p>
+            <p className="text-gray-500 text-sm">Compare Pokémon GO stats and max CP side by side</p>
           </div>
           <ComparePanel isShiny={isShiny} is3D={is3D} />
         </main>
       ) : (
         <main className="max-w-7xl mx-auto px-4 py-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-            {/* Left: Pokédex list (collapsible on mobile) */}
             <div className="lg:col-span-1">
               <div className="glass-dark rounded-2xl p-4">
-                <button onClick={() => setShowDex(!showDex)}
-                  className="flex items-center justify-between w-full lg:cursor-default mb-3">
+                <button onClick={()=>setShowDex(!showDex)} className="flex items-center justify-between w-full lg:cursor-default mb-3">
                   <h3 className="text-white font-bold text-sm uppercase tracking-widest">Pokédex</h3>
-                  <span className="lg:hidden text-gray-400 text-xs">{showDex ? '▲ Hide' : '▼ Show'}</span>
+                  <span className="lg:hidden text-gray-400 text-xs">{showDex?'▲ Hide':'▼ Show'}</span>
                 </button>
-                <div className={`${showDex ? 'block' : 'hidden'} lg:block`}>
+                <div className={`${showDex?'block':'hidden'} lg:block`}>
                   <PokedexGrid onSelect={loadPokemon} activeName={activePokemon?.name} />
                 </div>
               </div>
             </div>
 
-            {/* Center: Pokémon card + tabs */}
             <div className="lg:col-span-2 space-y-4">
-              {loading && (
+              {loading&&(
                 <div className="glass-dark rounded-2xl p-12 flex flex-col items-center gap-4">
-                  <LoadingSpinner size="lg" />
-                  <p className="text-gray-500 text-sm">Loading Pokémon data...</p>
+                  <LoadingSpinner size="lg" /><p className="text-gray-500 text-sm">Loading…</p>
                 </div>
               )}
-              {error && !loading && (
+              {error&&!loading&&(
                 <div className="glass-dark rounded-2xl p-8 text-center">
                   <p className="text-red-400 text-4xl mb-3">😵</p>
                   <p className="text-red-400 font-semibold">{error}</p>
-                  <p className="text-gray-600 text-sm mt-1">Try searching for "pikachu", "bulbasaur", or a number like "25"</p>
+                  <p className="text-gray-600 text-sm mt-1">Try "pikachu", "charizard" or a Pokédex number</p>
                 </div>
               )}
-
-              {activePokemon && !loading && (
+              {activePokemon&&!loading&&(
                 <>
-                  <PokemonCard
-                    pokemon={activePokemon} species={activeSpecies}
-                    isShiny={isShiny} is3D={is3D}
-                    shadowType={activeShadowType}
-                    onToggleShiny={setIsShiny} onToggle3D={setIs3D}
-                  />
-
-                  {/* Tabs */}
+                  <PokemonCard pokemon={activePokemon} species={activeSpecies}
+                    isShiny={isShiny} is3D={is3D} shadowType={activeShadow}
+                    onToggleShiny={setIsShiny} onToggle3D={setIs3D} />
                   <div className="glass-dark rounded-2xl overflow-hidden">
-                    <div className="flex border-b border-white/10">
-                      {tabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                          className={`flex-1 py-3 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 ${activeTab===tab.id ? 'tab-active text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}>
-                          <span>{tab.icon}</span>
-                          <span>{tab.label}</span>
+                    <div className="flex border-b border-white/10 overflow-x-auto">
+                      {tabs.map(t=>(
+                        <button key={t.id} onClick={()=>setActiveTab(t.id)}
+                          className={`flex-1 min-w-max py-3 px-2 text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1 ${activeTab===t.id?'tab-active text-white':'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}>
+                          <span>{t.icon}</span><span>{t.label}</span>
                         </button>
                       ))}
                     </div>
                     <div className="p-5">
-                      {activeTab === 'info' && (
-                        <DetailPanel pokemon={activePokemon} species={activeSpecies} isShiny={isShiny} is3D={is3D} />
-                      )}
-                      {activeTab === 'cp' && (
-                        <CPCalculator pokemon={activePokemon} />
-                      )}
-                      {activeTab === 'iv' && (
-                        <IVChart pokemon={activePokemon} />
-                      )}
-                      {activeTab === 'raid' && (
-                        <RaidIVChart pokemon={activePokemon} />
-                      )}
-                      {activeTab === 'evo' && (
+                      {activeTab==='info'&&     <DetailPanel pokemon={activePokemon} species={activeSpecies} />}
+                      {activeTab==='cp'&&        <CPCalculator pokemon={activePokemon} />}
+                      {activeTab==='iv'&&        <IVChart pokemon={activePokemon} />}
+                      {activeTab==='raid'&&      <RaidIVChart pokemon={activePokemon} />}
+                      {activeTab==='counters'&&  <RaidCounters pokemon={activePokemon} />}
+                      {activeTab==='evo'&&(
                         <div>
                           <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3">Evolution Chain</p>
-                          <EvolutionChain
-                            speciesName={activePokemon.name}
-                            isShiny={isShiny} is3D={is3D}
-                            onSelect={loadPokemon}
-                            activeName={activePokemon.name}
-                          />
+                          <EvolutionChain speciesName={activePokemon.species?.name||activePokemon.name}
+                            isShiny={isShiny} is3D={is3D} onSelect={loadPokemon} activeName={activePokemon.name} />
                         </div>
                       )}
                     </div>
                   </div>
                 </>
               )}
-
-              {!activePokemon && !loading && !error && (
+              {!activePokemon&&!loading&&!error&&(
                 <div className="glass-dark rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
                   <div className="text-6xl">🔴</div>
                   <h3 className="text-white font-bold text-xl">Welcome to GO Dex</h3>
-                  <p className="text-gray-500 text-sm max-w-sm">Search for any Pokémon by name or ID, or browse the Pokédex on the left to get started.</p>
+                  <p className="text-gray-500 text-sm max-w-sm">Search for any Pokémon or browse the Pokédex on the left.</p>
                 </div>
               )}
             </div>
@@ -1864,7 +1510,6 @@ function App() {
         </main>
       )}
 
-      {/* Footer */}
       <footer className="text-center py-6 text-gray-700 text-xs">
         <p>Pokémon GO Dex &amp; CP Calculator • Data from <a href="https://pokeapi.co" className="text-indigo-500 hover:text-indigo-400" target="_blank" rel="noopener">PokéAPI</a></p>
         <p className="mt-1">Not affiliated with Niantic, Inc. or Nintendo</p>
