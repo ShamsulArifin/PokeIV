@@ -85,12 +85,28 @@ html, body {
   .tab-btn { flex-direction: row; gap: 6px; font-size: 11px; min-width: auto; padding: 13px 16px; }
 }
 
-/* ── Type badge ────────────────────────── */
-.tbadge {
-  display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px;
-  font-size: 11px; font-weight: 600; text-transform: capitalize; letter-spacing: 0.01em;
+/* ── Type badge — icon-based, tooltip on hover ─────────────────────────── */
+/* TypeBadge component uses inline styles; this adds tooltip via CSS */
+[data-type-tip] { position: relative; }
+[data-type-tip]:hover::after {
+  content: attr(data-type-tip);
+  position: absolute;
+  bottom: calc(100% + 5px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10,10,20,.96);
+  color: #eeeef5;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid rgba(255,255,255,.12);
+  text-transform: capitalize;
+  z-index: 200;
+  letter-spacing: .03em;
 }
-.tbadge.lg { padding: 4px 12px; font-size: 12px; }
 
 /* ── Stat bar ──────────────────────────── */
 .sbar { height: 6px; border-radius: 99px; background: var(--s3); overflow: hidden; }

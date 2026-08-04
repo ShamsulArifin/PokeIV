@@ -8,13 +8,42 @@ function Spinner({ size = 'md' }) {
   });
 }
 
-// ── TypeBadge ─────────────────────────────────────────────────────────────
+// ── Type icon IDs — matches PokeAPI /type/ endpoint ──────────────────────
+const TYPE_IDS = {
+  normal:1, fighting:2, flying:3, poison:4, ground:5, rock:6,
+  bug:7, ghost:8, steel:9, fire:10, water:11, grass:12,
+  electric:13, psychic:14, ice:15, dragon:16, dark:17, fairy:18,
+};
+const TYPE_ICON_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/';
+
+// ── TypeBadge — shows the official Pokémon type icon ─────────────────────
+// lg = larger variant (PokemonCard, RaidCounters defending types)
+// sm = default (type matchup lists, CounterRow attacker types)
 function TypeBadge({ type, lg = false }) {
-  const c = TYPE_COLORS[type] || '#888';
+  const c    = TYPE_COLORS[type] || '#888';
+  const tid  = TYPE_IDS[type];
+  const size = lg ? 26 : 20;
+  const pad  = lg ? '3px 8px' : '2px 6px';
+
   return (
-    <span className={`tbadge${lg ? ' lg' : ''}`}
-      style={{ background: c + '28', color: c, border: `1px solid ${c}48` }}>
-      {cap(type)}
+    <span
+      data-type-tip={cap(type)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        padding: pad, borderRadius: 20, flexShrink: 0,
+        background: c + '20', border: `1px solid ${c}40`,
+      }}>
+      {tid ? (
+        <img
+          src={`${TYPE_ICON_BASE}${tid}.png`}
+          alt={type}
+          width={size}
+          height={size}
+          style={{ objectFit: 'contain', display: 'block' }}
+        />
+      ) : (
+        <span style={{ fontSize: lg ? 12 : 10, fontWeight: 600, color: c, textTransform: 'capitalize', lineHeight: 1 }}>{type}</span>
+      )}
     </span>
   );
 }
