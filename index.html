@@ -1,46 +1,170 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pokémon GO Dex &amp; CP Calculator</title>
+  <title>Pokémon GO Dex & CP Calculator</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
-    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
-    body { background: #0a0a0f; margin: 0; padding: 0; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: #1a1a2e; }
-    ::-webkit-scrollbar-thumb { background: #3d3d6b; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #5555aa; }
-    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
-    .glass-dark { background: rgba(10,10,20,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); }
-    .card-hover { transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
-    .card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
-    .type-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-    .slider-thumb::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #818cf8; cursor: pointer; box-shadow: 0 0 8px rgba(129,140,248,0.6); }
-    .slider-thumb::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #818cf8; cursor: pointer; border: none; }
-    .slider-thumb { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; outline: none; cursor: pointer; }
-    .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-    .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.4,0,0.2,1); }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .pokemon-img { filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5)); transition: transform 0.3s ease; }
-    .pokemon-img:hover { transform: scale(1.05) rotate(-2deg); }
-    .shiny-glow   { filter: drop-shadow(0 0 16px rgba(251,191,36,0.85)) drop-shadow(0 0 6px rgba(251,191,36,0.5)); }
-    .shadow-glow  { filter: drop-shadow(0 0 14px rgba(109,40,217,0.9))  drop-shadow(0 0 6px rgba(88,28,235,0.7)); }
-    .purified-glow{ filter: drop-shadow(0 0 14px rgba(6,182,212,0.75))  drop-shadow(0 0 6px rgba(6,182,212,0.4)); }
-    .tab-active { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
-    .stat-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
-    .stat-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
-    .cp-display { background: linear-gradient(135deg, #1e1b4b, #312e81); border: 1px solid rgba(99,102,241,0.4); }
-    .search-dropdown { z-index: 1000; }
-    .pokedex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-    @media (max-width: 640px) { .pokedex-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; } }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #111118;
+      --s1: #1c1c26;
+      --s2: #242430;
+      --s3: #2e2e3d;
+      --border: rgba(255,255,255,0.08);
+      --border2: rgba(255,255,255,0.14);
+      --text: #eeeef5;
+      --muted: #888899;
+      --dim: #555566;
+      --accent: #5b5ef4;
+      --accent-light: #818cf8;
+      --r-sm: 10px;
+      --r-md: 14px;
+      --r-lg: 18px;
+    }
+    html, body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; -webkit-text-size-adjust: 100%; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 10px; }
+
+    /* ── Cards ─────────────────────────────── */
+    .card  { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r-lg); }
+    .card2 { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r-md); }
+    .card3 { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+
+    /* ── Inputs ────────────────────────────── */
+    .inp {
+      background: var(--s2); border: 1px solid var(--border2); border-radius: var(--r-sm);
+      color: var(--text); padding: 9px 12px; font-size: 14px; font-family: inherit;
+      outline: none; width: 100%; transition: border-color .15s;
+    }
+    .inp::placeholder { color: var(--dim); }
+    .inp:focus { border-color: var(--accent); }
+    @media (max-width: 640px) { .inp { font-size: 16px !important; } }
+
+    /* ── Buttons ───────────────────────────── */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 8px 16px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
+      font-family: inherit; border: 1px solid var(--border2); background: var(--s2);
+      color: var(--text); cursor: pointer; transition: background .15s, border-color .15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--s3); }
+    .btn.active-blue  { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.active-pink  { background: #be185d; border-color: #be185d; color: #fff; }
+    .btn.active-blue:hover  { background: #4e51e0; }
+    .btn.active-pink:hover  { background: #9d174d; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: #4e51e0; }
+    .btn:disabled { opacity: 0.38; cursor: default; }
+    @media (max-width: 640px) { .btn { min-height: 38px; } }
+
+    /* ── Toggle pill ───────────────────────── */
+    .toggle-pill {
+      display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px;
+      border-radius: 20px; font-size: 12px; font-weight: 600; font-family: inherit;
+      border: 1px solid var(--border2); background: transparent; color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .toggle-pill.on { background: rgba(255,255,255,0.1); color: var(--text); border-color: var(--border2); }
+
+    /* ── Tabs ──────────────────────────────── */
+    .tab-bar { display: flex; border-bottom: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab-btn {
+      flex: 1; min-width: 52px; padding: 12px 8px; display: flex; flex-direction: column;
+      align-items: center; gap: 3px; font-size: 10px; font-weight: 600; font-family: inherit;
+      color: var(--muted); border: none; border-bottom: 2px solid transparent;
+      background: transparent; cursor: pointer; transition: color .15s, border-color .15s;
+      text-transform: uppercase; letter-spacing: 0.05em;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--text); }
+    @media (min-width: 640px) {
+      .tab-btn { flex-direction: row; gap: 6px; font-size: 11px; min-width: auto; padding: 13px 16px; }
+    }
+
+    /* ── Type badge ────────────────────────── */
+    .tbadge {
+      display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px;
+      font-size: 11px; font-weight: 600; text-transform: capitalize; letter-spacing: 0.01em;
+    }
+    .tbadge.lg { padding: 4px 12px; font-size: 12px; }
+
+    /* ── Stat bar ──────────────────────────── */
+    .sbar { height: 6px; border-radius: 99px; background: var(--s3); overflow: hidden; }
+    .sbar-fill { height: 100%; border-radius: 99px; transition: width .7s cubic-bezier(.4,0,.2,1); }
+
+    /* ── Range slider ──────────────────────── */
+    .slider { -webkit-appearance: none; appearance: none; height: 5px; border-radius: 3px; outline: none; cursor: pointer; width: 100%; }
+    .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.5); cursor: pointer; }
+    .slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.5); cursor: pointer; }
+
+    /* ── Pokémon image ─────────────────────── */
+    .pimg { filter: drop-shadow(0 6px 16px rgba(0,0,0,0.55)); transition: transform .25s ease; }
+    .pimg:hover { transform: scale(1.04) translateY(-2px); }
+    .glow-shiny    { filter: drop-shadow(0 0 16px rgba(251,191,36,.8)) drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
+    .glow-shadow   { filter: drop-shadow(0 0 14px rgba(109,40,217,.8)) drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
+    .glow-purified { filter: drop-shadow(0 0 12px rgba(6,182,212,.65)) drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
+
+    /* ── Dex grid ──────────────────────────── */
+    .dex-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    @media (min-width: 400px) { .dex-grid { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; } }
+    @media (min-width: 768px) { .dex-grid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 9px; } }
+
+    .dex-card {
+      background: var(--s2); border: 1px solid var(--border); border-radius: var(--r-sm);
+      padding: 8px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      cursor: pointer; transition: background .15s, border-color .15s;
+    }
+    .dex-card:hover { background: var(--s3); border-color: var(--border2); }
+    .dex-card.sel { border-color: var(--accent); background: rgba(91,94,244,.12); }
+
+    /* ── Utilities ─────────────────────────── */
+    .fade-in  { animation: fadeIn  .25s ease-out; }
+    .slide-up { animation: slideUp .28s cubic-bezier(.4,0,.2,1); }
+    @keyframes fadeIn  { from{opacity:0}             to{opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .spin { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+    .search-dd { position: absolute; top: calc(100% + 6px); left: 0; right: 0; background: rgba(20,20,30,.98); border: 1px solid var(--border2); border-radius: var(--r-md); z-index: 999; max-height: 55vh; overflow-y: auto; box-shadow: 0 12px 40px rgba(0,0,0,.6); backdrop-filter: blur(12px); }
+    .overflow-x-auto { overflow-x: auto; }
+    .pb-safe { padding-bottom: env(safe-area-inset-bottom, 14px); }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { text-align: center; }
+    @media (max-width: 480px) { .tbl th, .tbl td { padding: 5px 5px !important; font-size: 11px !important; } }
+    /* ── Responsive layout ─────────────────── */
+    .header-mobile  { display: flex; flex-direction: column; gap: 8px; }
+    .header-desktop { display: none; }
+    .layout-main    { display: flex; flex-direction: column-reverse; gap: 14px; }
+    .dex-sidebar    { width: 100%; }
+    .detail-panel   { width: 100%; }
+    .compare-grid   { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 480px) { .compare-grid { grid-template-columns: 1fr; } }
+    @media (min-width: 640px) {
+      .header-mobile  { display: none; }
+      .header-desktop { display: flex; align-items: center; gap: 16px; }
+    }
+    @media (min-width: 1024px) {
+      .layout-main  { display: grid; grid-template-columns: 320px 1fr; gap: 24px; flex-direction: unset; }
+      .dex-sidebar  { grid-column: 1; }
+      .detail-panel { grid-column: 2; }
+    }
+    .dex-toggle-hint-mobile  { display: inline; }
+    .dex-toggle-hint-desktop { display: none; }
+    @media (min-width: 1024px) {
+      .dex-toggle-hint-mobile  { display: none; }
+      .dex-toggle-hint-desktop { display: inline; }
+      .dex-always-show { display: block !important; }
+    }
   </style>
 </head>
 <body>
@@ -48,493 +172,292 @@
 <script type="text/babel">
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────
-const CP_MULTIPLIERS = {
-  1:0.094,1.5:0.135137432,2:0.16639787,2.5:0.192650919,3:0.21573247,3.5:0.236572661,
-  4:0.25572005,4.5:0.273530381,5:0.29024988,5.5:0.306057377,6:0.3210876,6.5:0.335445036,
-  7:0.34921268,7.5:0.362457751,8:0.37523559,8.5:0.387592406,9:0.39956728,9.5:0.411193551,
-  10:0.42250001,10.5:0.432926419,11:0.44310755,11.5:0.453059958,12:0.46279839,12.5:0.472336083,
-  13:0.48168495,13.5:0.491008727,14:0.49985844,14.5:0.508701765,15:0.51739395,15.5:0.525942511,
-  16:0.53435433,16.5:0.542635767,17:0.55079269,17.5:0.558691524,18:0.56651357,18.5:0.574305815,
-  19:0.58200572,19.5:0.589887037,20:0.59740001,20.5:0.604818814,21:0.61215729,21.5:0.619399365,
-  22:0.62656069,22.5:0.633644533,23:0.64065295,23.5:0.647576426,24:0.65443563,24.5:0.661214806,
-  25:0.667934,25.5:0.674577537,26:0.68116492,26.5:0.687680648,27:0.69414365,27.5:0.700538717,
-  28:0.70688421,28.5:0.713164996,29:0.71939909,29.5:0.725571552,30:0.7317,30.5:0.734741009,
-  31:0.73776948,31.5:0.740785574,32:0.74378943,32.5:0.746781211,33:0.74976104,33.5:0.752729087,
-  34:0.75568551,34.5:0.758630378,35:0.76156384,35.5:0.764486065,36:0.76739717,36.5:0.770297266,
-  37:0.7731865,37.5:0.776064962,38:0.77893275,38.5:0.781790423,39:0.78463697,39.5:0.787473168,
-  40:0.79030001,40.5:0.792803968,41:0.79530001,41.5:0.797803921,42:0.80030001,42.5:0.802803876,
-  43:0.80530001,43.5:0.807803833,44:0.81030001,44.5:0.812803791,45:0.81530001,45.5:0.817803750,
-  46:0.82030001,46.5:0.822803710,47:0.82530001,47.5:0.827803671,48:0.83030001,48.5:0.832803633,
-  49:0.83530001,49.5:0.837803596,50:0.84029999
-};
+const CPM = {1:.094,1.5:.135137432,2:.16639787,2.5:.192650919,3:.21573247,3.5:.236572661,4:.25572005,4.5:.273530381,5:.29024988,5.5:.306057377,6:.3210876,6.5:.335445036,7:.34921268,7.5:.362457751,8:.37523559,8.5:.387592406,9:.39956728,9.5:.411193551,10:.42250001,10.5:.432926419,11:.44310755,11.5:.453059958,12:.46279839,12.5:.472336083,13:.48168495,13.5:.491008727,14:.49985844,14.5:.508701765,15:.51739395,15.5:.525942511,16:.53435433,16.5:.542635767,17:.55079269,17.5:.558691524,18:.56651357,18.5:.574305815,19:.58200572,19.5:.589887037,20:.59740001,20.5:.604818814,21:.61215729,21.5:.619399365,22:.62656069,22.5:.633644533,23:.64065295,23.5:.647576426,24:.65443563,24.5:.661214806,25:.667934,25.5:.674577537,26:.68116492,26.5:.687680648,27:.69414365,27.5:.700538717,28:.70688421,28.5:.713164996,29:.71939909,29.5:.725571552,30:.7317,30.5:.734741009,31:.73776948,31.5:.740785574,32:.74378943,32.5:.746781211,33:.74976104,33.5:.752729087,34:.75568551,34.5:.758630378,35:.76156384,35.5:.764486065,36:.76739717,36.5:.770297266,37:.7731865,37.5:.776064962,38:.77893275,38.5:.781790423,39:.78463697,39.5:.787473168,40:.79030001,40.5:.792803968,41:.79530001,41.5:.797803921,42:.80030001,42.5:.802803876,43:.80530001,43.5:.807803833,44:.81030001,44.5:.812803791,45:.81530001,45.5:.817803750,46:.82030001,46.5:.822803710,47:.82530001,47.5:.827803671,48:.83030001,48.5:.832803633,49:.83530001,49.5:.837803596,50:.84029999};
 
-const TYPE_COLORS = {
-  normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F8D030',grass:'#78C850',
-  ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#A890F0',
-  psychic:'#F85888',bug:'#A8B820',rock:'#B8A038',ghost:'#705898',dragon:'#7038F8',
-  dark:'#705848',steel:'#B8B8D0',fairy:'#EE99AC',stellar:'#40B5A5',unknown:'#68A090'
-};
+const TYPE_COLORS = {normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F8D030',grass:'#78C850',ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#A890F0',psychic:'#F85888',bug:'#A8B820',rock:'#B8A038',ghost:'#705898',dragon:'#7038F8',dark:'#705848',steel:'#B8B8D0',fairy:'#EE99AC'};
 
-const TYPE_EFFECTIVENESS = {
-  normal:{fighting:2,ghost:0},
-  fire:{water:2,ground:2,rock:2,fire:0.5,grass:0.5,ice:0.5,bug:0.5,steel:0.5,fairy:0.5},
-  water:{electric:2,grass:2,fire:0.5,water:0.5,ice:0.5,steel:0.5},
-  electric:{ground:2,electric:0.5,flying:0.5,steel:0.5},
-  grass:{fire:2,ice:2,poison:2,flying:2,bug:2,water:0.5,electric:0.5,grass:0.5,ground:0.5},
-  ice:{fire:2,fighting:2,rock:2,steel:2,ice:0.5},
-  fighting:{flying:2,psychic:2,fairy:2,bug:0.5,rock:0.5,dark:0.5},
-  poison:{ground:2,psychic:2,fighting:0.5,poison:0.5,bug:0.5,grass:0.5,fairy:0.5},
-  ground:{water:2,grass:2,ice:2,electric:0,poison:0.5,rock:0.5,steel:0.5},
-  flying:{electric:2,ice:2,rock:2,fighting:0.5,bug:0.5,grass:0.5,ground:0},
-  psychic:{bug:2,ghost:2,dark:2,fighting:0.5,psychic:0.5},
-  bug:{fire:2,flying:2,rock:2,fighting:0.5,ground:0.5,grass:0.5},
-  rock:{water:2,grass:2,fighting:2,ground:2,steel:2,normal:0.5,fire:0.5,poison:0.5,flying:0.5},
-  ghost:{ghost:2,dark:2,normal:0,fighting:0,poison:0.5,bug:0.5},
-  dragon:{ice:2,dragon:2,fairy:2,fire:0.5,water:0.5,electric:0.5,grass:0.5},
-  dark:{fighting:2,bug:2,fairy:2,ghost:0.5,dark:0.5,psychic:0},
-  steel:{fire:2,fighting:2,ground:2,normal:0.5,grass:0.5,ice:0.5,flying:0.5,psychic:0.5,bug:0.5,rock:0.5,dragon:0.5,steel:0.5,fairy:0.5,poison:0},
-  fairy:{poison:2,steel:2,fighting:0.5,bug:0.5,dark:0.5,dragon:0}
-};
+const TYPE_EFF = {normal:{fighting:2,ghost:0},fire:{water:2,ground:2,rock:2,fire:.5,grass:.5,ice:.5,bug:.5,steel:.5,fairy:.5},water:{electric:2,grass:2,fire:.5,water:.5,ice:.5,steel:.5},electric:{ground:2,electric:.5,flying:.5,steel:.5},grass:{fire:2,ice:2,poison:2,flying:2,bug:2,water:.5,electric:.5,grass:.5,ground:.5},ice:{fire:2,fighting:2,rock:2,steel:2,ice:.5},fighting:{flying:2,psychic:2,fairy:2,bug:.5,rock:.5,dark:.5},poison:{ground:2,psychic:2,fighting:.5,poison:.5,bug:.5,grass:.5,fairy:.5},ground:{water:2,grass:2,ice:2,electric:0,poison:.5,rock:.5,steel:.5},flying:{electric:2,ice:2,rock:2,fighting:.5,bug:.5,grass:.5,ground:0},psychic:{bug:2,ghost:2,dark:2,fighting:.5,psychic:.5},bug:{fire:2,flying:2,rock:2,fighting:.5,ground:.5,grass:.5},rock:{water:2,grass:2,fighting:2,ground:2,steel:2,normal:.5,fire:.5,poison:.5,flying:.5},ghost:{ghost:2,dark:2,normal:0,fighting:0,poison:.5,bug:.5},dragon:{ice:2,dragon:2,fairy:2,fire:.5,water:.5,electric:.5,grass:.5},dark:{fighting:2,bug:2,fairy:2,ghost:.5,dark:.5,psychic:0},steel:{fire:2,fighting:2,ground:2,normal:.5,grass:.5,ice:.5,flying:.5,psychic:.5,bug:.5,rock:.5,dragon:.5,steel:.5,fairy:.5,poison:0},fairy:{poison:2,steel:2,fighting:.5,bug:.5,dark:.5,dragon:0}};
 
-// Raid encounter levels & IV floors
-const ENCOUNTER_TYPES = {
-  raid:       { label:'Raid',              level:20, boostedLevel:25, floor:10, hasBoosted:true  },
-  shadowRaid: { label:'Shadow Raid',       level:8,  boostedLevel:13, floor:6,  hasBoosted:true  },
-  research:   { label:'Research / GO Pass',level:15, boostedLevel:null, floor:10, hasBoosted:false },
-  egg:        { label:'Egg Hatch',         level:20, boostedLevel:null, floor:10, hasBoosted:false },
-  wild:       { label:'Wild Catch',        level:1,  boostedLevel:null, floor:0,  hasBoosted:false },
-  lucky:      { label:'Lucky Trade',       level:1,  boostedLevel:null, floor:12, hasBoosted:false },
-};
+const ENC = {raid:{label:'Raid',lv:20,blv:25,fl:10,boosted:true},shadowRaid:{label:'Shadow Raid',lv:8,blv:13,fl:6,boosted:true},research:{label:'Research',lv:15,blv:null,fl:10,boosted:false},egg:{label:'Egg',lv:20,blv:null,fl:10,boosted:false},wild:{label:'Wild',lv:1,blv:null,fl:0,boosted:false},lucky:{label:'Lucky Trade',lv:1,blv:null,fl:12,boosted:false}};
 
-const WEATHER_BOOSTS = {
-  sunny:       { label:'☀️ Sunny/Clear',    types:['fire','grass','ground'] },
-  rainy:       { label:'🌧️ Rainy',          types:['water','electric','bug'] },
-  partlyCloudy:{ label:'⛅ Partly Cloudy', types:['normal','rock'] },
-  cloudy:      { label:'☁️ Cloudy',         types:['fairy','fighting','poison'] },
-  windy:       { label:'💨 Windy',          types:['dragon','flying','psychic'] },
-  snowy:       { label:'❄️ Snowy',          types:['ice','steel'] },
-  foggy:       { label:'🌫️ Foggy',          types:['dark','ghost'] },
-};
+const WEATHER = {sunny:{label:'☀️ Sunny',types:['fire','grass','ground']},rainy:{label:'🌧 Rainy',types:['water','electric','bug']},partlyCloudy:{label:'⛅ Partly Cloudy',types:['normal','rock']},cloudy:{label:'☁️ Cloudy',types:['fairy','fighting','poison']},windy:{label:'💨 Windy',types:['dragon','flying','psychic']},snowy:{label:'❄️ Snow',types:['ice','steel']},foggy:{label:'🌫 Foggy',types:['dark','ghost']}};
 
-const TOP_COUNTERS = [
-  {name:'mewtwo',      types:['psychic'],         move:'psychic'},
-  {name:'rayquaza',    types:['dragon','flying'],  move:'dragon'},
-  {name:'garchomp',    types:['dragon','ground'],  move:'dragon'},
-  {name:'dragonite',   types:['dragon','flying'],  move:'dragon'},
-  {name:'salamence',   types:['dragon','flying'],  move:'dragon'},
-  {name:'dialga',      types:['steel','dragon'],   move:'dragon'},
-  {name:'palkia',      types:['water','dragon'],   move:'dragon'},
-  {name:'zekrom',      types:['dragon','electric'],move:'electric'},
-  {name:'reshiram',    types:['dragon','fire'],    move:'fire'},
-  {name:'kyurem',      types:['dragon','ice'],     move:'ice'},
-  {name:'tyranitar',   types:['rock','dark'],      move:'rock'},
-  {name:'rampardos',   types:['rock'],             move:'rock'},
-  {name:'rhyperior',   types:['ground','rock'],    move:'rock'},
-  {name:'terrakion',   types:['rock','fighting'],  move:'rock'},
-  {name:'aerodactyl',  types:['rock','flying'],    move:'rock'},
-  {name:'nihilego',    types:['rock','poison'],    move:'rock'},
-  {name:'machamp',     types:['fighting'],         move:'fighting'},
-  {name:'lucario',     types:['fighting','steel'], move:'fighting'},
-  {name:'conkeldurr',  types:['fighting'],         move:'fighting'},
-  {name:'hariyama',    types:['fighting'],         move:'fighting'},
-  {name:'breloom',     types:['grass','fighting'], move:'fighting'},
-  {name:'blaziken',    types:['fire','fighting'],  move:'fighting'},
-  {name:'keldeo',      types:['water','fighting'], move:'fighting'},
-  {name:'chandelure',  types:['ghost','fire'],     move:'ghost'},
-  {name:'gengar',      types:['ghost','poison'],   move:'ghost'},
-  {name:'giratina-origin', types:['ghost','dragon'],move:'ghost'},
-  {name:'darkrai',     types:['dark'],             move:'dark'},
-  {name:'weavile',     types:['dark','ice'],       move:'dark'},
-  {name:'hydreigon',   types:['dark','dragon'],    move:'dark'},
-  {name:'yveltal',     types:['dark','flying'],    move:'dark'},
-  {name:'kyogre',      types:['water'],            move:'water'},
-  {name:'swampert',    types:['water','ground'],   move:'water'},
-  {name:'greninja',    types:['water','dark'],     move:'water'},
-  {name:'feraligatr',  types:['water'],            move:'water'},
-  {name:'kingler',     types:['water'],            move:'water'},
-  {name:'raikou',      types:['electric'],         move:'electric'},
-  {name:'electivire',  types:['electric'],         move:'electric'},
-  {name:'zapdos',      types:['electric','flying'],move:'electric'},
-  {name:'magnezone',   types:['electric','steel'], move:'electric'},
-  {name:'moltres',     types:['fire','flying'],    move:'fire'},
-  {name:'charizard',   types:['fire','flying'],    move:'fire'},
-  {name:'entei',       types:['fire'],             move:'fire'},
-  {name:'flareon',     types:['fire'],             move:'fire'},
-  {name:'mamoswine',   types:['ice','ground'],     move:'ice'},
-  {name:'glaceon',     types:['ice'],              move:'ice'},
-  {name:'articuno',    types:['ice','flying'],     move:'ice'},
-  {name:'roserade',    types:['grass','poison'],   move:'grass'},
-  {name:'tangrowth',   types:['grass'],            move:'grass'},
-  {name:'leafeon',     types:['grass'],            move:'grass'},
-  {name:'venusaur',    types:['grass','poison'],   move:'grass'},
-  {name:'excadrill',   types:['ground','steel'],   move:'ground'},
-  {name:'groudon',     types:['ground'],           move:'ground'},
-  {name:'landorus-therian',types:['ground','flying'],move:'ground'},
-  {name:'metagross',   types:['steel','psychic'],  move:'steel'},
-  {name:'melmetal',    types:['steel'],            move:'steel'},
-  {name:'genesect',    types:['bug','steel'],      move:'bug'},
-  {name:'scizor',      types:['bug','steel'],      move:'bug'},
-  {name:'escavalier',  types:['bug','steel'],      move:'bug'},
-  {name:'alakazam',    types:['psychic'],          move:'psychic'},
-  {name:'espeon',      types:['psychic'],          move:'psychic'},
-  {name:'latios',      types:['dragon','psychic'], move:'psychic'},
-  {name:'togekiss',    types:['fairy','flying'],   move:'fairy'},
-  {name:'gardevoir',   types:['psychic','fairy'],  move:'fairy'},
-  {name:'sylveon',     types:['fairy'],            move:'fairy'},
-  {name:'xerneas',     types:['fairy'],            move:'fairy'},
-  {name:'nidoking',    types:['poison','ground'],  move:'poison'},
-  {name:'victreebel',  types:['grass','poison'],   move:'poison'},
-  {name:'staraptor',   types:['normal','flying'],  move:'flying'},
-  {name:'honchkrow',   types:['dark','flying'],    move:'flying'},
-];
+const COUNTERS=[{name:'mewtwo',types:['psychic'],move:'psychic'},{name:'rayquaza',types:['dragon','flying'],move:'dragon'},{name:'garchomp',types:['dragon','ground'],move:'dragon'},{name:'dragonite',types:['dragon','flying'],move:'dragon'},{name:'salamence',types:['dragon','flying'],move:'dragon'},{name:'dialga',types:['steel','dragon'],move:'dragon'},{name:'palkia',types:['water','dragon'],move:'dragon'},{name:'zekrom',types:['dragon','electric'],move:'electric'},{name:'reshiram',types:['dragon','fire'],move:'fire'},{name:'kyurem',types:['dragon','ice'],move:'ice'},{name:'tyranitar',types:['rock','dark'],move:'rock'},{name:'rampardos',types:['rock'],move:'rock'},{name:'rhyperior',types:['ground','rock'],move:'rock'},{name:'terrakion',types:['rock','fighting'],move:'rock'},{name:'nihilego',types:['rock','poison'],move:'rock'},{name:'machamp',types:['fighting'],move:'fighting'},{name:'lucario',types:['fighting','steel'],move:'fighting'},{name:'conkeldurr',types:['fighting'],move:'fighting'},{name:'keldeo',types:['water','fighting'],move:'fighting'},{name:'blaziken',types:['fire','fighting'],move:'fighting'},{name:'chandelure',types:['ghost','fire'],move:'ghost'},{name:'gengar',types:['ghost','poison'],move:'ghost'},{name:'giratina-origin',types:['ghost','dragon'],move:'ghost'},{name:'darkrai',types:['dark'],move:'dark'},{name:'weavile',types:['dark','ice'],move:'dark'},{name:'hydreigon',types:['dark','dragon'],move:'dark'},{name:'yveltal',types:['dark','flying'],move:'dark'},{name:'kyogre',types:['water'],move:'water'},{name:'swampert',types:['water','ground'],move:'water'},{name:'greninja',types:['water','dark'],move:'water'},{name:'raikou',types:['electric'],move:'electric'},{name:'electivire',types:['electric'],move:'electric'},{name:'zapdos',types:['electric','flying'],move:'electric'},{name:'moltres',types:['fire','flying'],move:'fire'},{name:'charizard',types:['fire','flying'],move:'fire'},{name:'entei',types:['fire'],move:'fire'},{name:'mamoswine',types:['ice','ground'],move:'ice'},{name:'glaceon',types:['ice'],move:'ice'},{name:'articuno',types:['ice','flying'],move:'ice'},{name:'roserade',types:['grass','poison'],move:'grass'},{name:'tangrowth',types:['grass'],move:'grass'},{name:'venusaur',types:['grass','poison'],move:'grass'},{name:'excadrill',types:['ground','steel'],move:'ground'},{name:'groudon',types:['ground'],move:'ground'},{name:'landorus-therian',types:['ground','flying'],move:'ground'},{name:'metagross',types:['steel','psychic'],move:'steel'},{name:'melmetal',types:['steel'],move:'steel'},{name:'genesect',types:['bug','steel'],move:'bug'},{name:'scizor',types:['bug','steel'],move:'bug'},{name:'alakazam',types:['psychic'],move:'psychic'},{name:'espeon',types:['psychic'],move:'psychic'},{name:'latios',types:['dragon','psychic'],move:'psychic'},{name:'togekiss',types:['fairy','flying'],move:'fairy'},{name:'gardevoir',types:['psychic','fairy'],move:'fairy'},{name:'sylveon',types:['fairy'],move:'fairy'},{name:'xerneas',types:['fairy'],move:'fairy'}];
 
-const GENERATION_RANGES = [
-  {label:'Gen I',   min:1,   max:151},
-  {label:'Gen II',  min:152, max:251},
-  {label:'Gen III', min:252, max:386},
-  {label:'Gen IV',  min:387, max:493},
-  {label:'Gen V',   min:494, max:649},
-  {label:'Gen VI',  min:650, max:721},
-  {label:'Gen VII', min:722, max:809},
-  {label:'Gen VIII',min:810, max:905},
-  {label:'Gen IX',  min:906, max:1025},
-  {label:'Forms',   min:1026,max:99999},
-];
+const GENS=[{label:'Gen I',min:1,max:151},{label:'Gen II',min:152,max:251},{label:'Gen III',min:252,max:386},{label:'Gen IV',min:387,max:493},{label:'Gen V',min:494,max:649},{label:'Gen VI',min:650,max:721},{label:'Gen VII',min:722,max:809},{label:'Gen VIII',min:810,max:905},{label:'Gen IX',min:906,max:1025},{label:'Forms',min:1026,max:99999}];
 
-const SHADOW_IDS = [
-  1,2,3,4,5,6,7,8,9,25,27,28,37,38,41,42,50,51,52,53,54,55,58,59,66,67,68,72,73,
-  74,75,76,77,78,79,80,81,82,88,89,93,94,100,101,109,110,111,112,113,114,115,116,
-  117,118,119,120,121,122,123,126,127,128,130,131,137,138,139,140,141,142,143,147,
-  148,149,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,
-  170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,
-  190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,
-  210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,
-  230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,252,
-  253,254,255,256,257,258,259,260,280,281,282,299,304,305,306,309,310,328,329,330,
-  333,334,349,350
-];
+const SHADOW_IDS=[1,2,3,4,5,6,7,8,9,25,27,28,37,38,41,42,50,51,52,53,54,55,58,59,66,67,68,72,73,74,75,76,77,78,79,80,81,82,88,89,93,94,100,101,109,110,111,112,113,114,115,116,117,118,119,120,121,122,123,126,127,128,130,131,137,138,139,140,141,142,143,147,148,149,152,153,154,155,156,157,158,159,160,161,162,163,164,165,166,167,168,169,170,171,172,173,174,175,176,177,178,179,180,181,182,183,184,185,186,187,188,189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,207,208,209,210,211,212,213,214,215,216,217,218,219,220,221,222,223,224,225,226,227,228,229,230,231,232,233,234,235,236,237,238,239,240,241,242,243,244,245,246,247,248,252,253,254,255,256,257,258,259,260,280,281,282,299,304,305,306,309,310,328,329,330,333,334,349,350];
 
-// ── UTILITIES ─────────────────────────────────────────────────────────────
-function calcCP(atk, def, hp, aIV, dIV, hIV, lv) {
-  const m = CP_MULTIPLIERS[lv] || 0.79030001;
-  return Math.max(10, Math.floor((atk+aIV)*Math.pow(def+dIV,0.5)*Math.pow(hp+hIV,0.5)*m*m/10));
-}
-function calcHP(hp, hIV, lv) {
-  return Math.max(10, Math.floor((hp+hIV)*(CP_MULTIPLIERS[lv]||0.79030001)));
-}
-function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : ''; }
-function padId(id){ return String(id).padStart(4,'0'); }
+// ── UTILS ─────────────────────────────────────────────────────────────────
+const calcCP = (a,d,h,aIV,dIV,hIV,lv) => Math.max(10,Math.floor((a+aIV)*Math.pow(d+dIV,.5)*Math.pow(h+hIV,.5)*(CPM[lv]||.79)**2/10));
+const calcHP = (h,hIV,lv) => Math.max(10,Math.floor((h+hIV)*(CPM[lv]||.79)));
+const cap = s => s?s[0].toUpperCase()+s.slice(1):'';
+const padId = id => String(id).padStart(4,'0');
+const idFromUrl = url => { const m=url.match(/\/(\d+)\/$/); return m?parseInt(m[1]):0; };
 
-function getGoStats(pokemon) {
-  const s = {};
-  pokemon.stats.forEach(x => { s[x.stat.name] = x.base_stat; });
+function goStats(poke) {
+  const s={}; poke.stats.forEach(x=>s[x.stat.name]=x.base_stat);
   return {
-    attack:  Math.max(1, Math.round((s['attack']+s['special-attack'])*0.875 + s['speed']*0.125)),
-    defense: Math.max(1, Math.round((s['defense']+s['special-defense'])*0.875 + s['speed']*0.125)),
-    hp:      Math.max(1, Math.floor(s['hp']*1.75+50)),
-    rawStats: s,
+    atk: Math.max(1,Math.round((s.attack+s['special-attack'])*.875+s.speed*.125)),
+    def: Math.max(1,Math.round((s.defense+s['special-defense'])*.875+s.speed*.125)),
+    hp:  Math.max(1,Math.floor(s.hp*1.75+50)),
+    raw: s,
   };
 }
 
-function getTypeWeaknesses(types) {
-  const eff = {};
-  types.forEach(type => {
-    Object.entries(TYPE_EFFECTIVENESS[type]||{}).forEach(([at,m]) => {
-      eff[at] = (eff[at]||1)*m;
-    });
+function typeWeaknesses(types) {
+  const eff={};
+  types.forEach(t=>Object.entries(TYPE_EFF[t]||{}).forEach(([at,m])=>{ eff[at]=(eff[at]||1)*m; }));
+  const weak=[],resist=[],immune=[];
+  Object.entries(eff).forEach(([t,m])=>{
+    if(m>=2) weak.push({t,m}); else if(m===0) immune.push({t}); else if(m<1) resist.push({t,m});
   });
-  const weak=[], resist=[], immune=[];
-  Object.entries(eff).forEach(([t,m]) => {
-    if(m>=2) weak.push({type:t,mult:m});
-    else if(m===0) immune.push({type:t});
-    else if(m<1) resist.push({type:t,mult:m});
-  });
-  return {weak, resist, immune};
+  return {weak,resist,immune};
 }
 
-function getWeatherForTypes(types) {
-  return Object.entries(WEATHER_BOOSTS)
-    .filter(([,w]) => types.some(t => w.types.includes(t)))
-    .map(([,w]) => w.label);
+function weatherForTypes(types) {
+  return Object.values(WEATHER).filter(w=>types.some(t=>w.types.includes(t))).map(w=>w.label);
 }
 
-function typeEffVs(attackType, defTypes) {
-  let m=1;
-  defTypes.forEach(dt => { m *= (TYPE_EFFECTIVENESS[dt]||{})[attackType]??1; });
-  return m;
+function typeEffVs(attackType,defTypes) {
+  let m=1; defTypes.forEach(dt=>{m*=(TYPE_EFF[dt]||{})[attackType]??1;}); return m;
 }
 
 function scoredCounters(defTypes) {
-  const seen = new Set();
-  const out  = [];
-  for (const c of TOP_COUNTERS) {
-    if (seen.has(c.name)) continue;
-    seen.add(c.name);
-    let best=0, bestType='';
-    for (const t of [c.move, ...c.types]) {
-      if (!t) continue;
-      const e = typeEffVs(t, defTypes);
-      if (e > best) { best=e; bestType=t; }
-    }
-    if (best >= 1.6) out.push({...c, eff:best, bestMoveType:bestType});
+  const seen=new Set(),out=[];
+  for(const c of COUNTERS){
+    if(seen.has(c.name)) continue; seen.add(c.name);
+    let best=0,bestT='';
+    for(const t of [c.move,...c.types]){if(!t) continue; const e=typeEffVs(t,defTypes); if(e>best){best=e;bestT=t;}}
+    if(best>=1.6) out.push({...c,eff:best,bestMoveType:bestT});
   }
-  out.sort((a,b)=>b.eff-a.eff);
-  return out.slice(0,10);
+  out.sort((a,b)=>b.eff-a.eff); return out.slice(0,10);
 }
 
-function reverseLookupCP(goStats, targetCP) {
-  const rows = [];
-  const levels = Object.keys(CP_MULTIPLIERS).map(Number).sort((a,b)=>a-b);
-  for (const lv of levels) {
-    for (let a=0;a<=15;a++) for (let d=0;d<=15;d++) for (let h=0;h<=15;h++) {
-      if (calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,lv)===targetCP)
-        rows.push({level:lv,a,d,h,ivPct:Math.round(((a+d+h)/45)*100)});
-    }
-  }
+function reverseLookup(gs,target) {
+  const rows=[]; const lvs=Object.keys(CPM).map(Number).sort((a,b)=>a-b);
+  for(const lv of lvs) for(let a=0;a<=15;a++) for(let d=0;d<=15;d++) for(let h=0;h<=15;h++)
+    if(calcCP(gs.atk,gs.def,gs.hp,a,d,h,lv)===target)
+      rows.push({lv,a,d,h,pct:Math.round(((a+d+h)/45)*100)});
   return rows;
 }
 
-function idFromUrl(url){ const m=url.match(/\/(\d+)\/$/); return m?parseInt(m[1]):0; }
-
 function getFormTag(name) {
-  if(name.endsWith('-shadow'))   return {tag:'Shadow',   color:'#7c3aed'};
-  if(name.endsWith('-purified')) return {tag:'Purified',  color:'#06b6d4'};
-  if(name.includes('-alola'))   return {tag:'Alolan',   color:'#f59e0b'};
-  if(name.includes('-galar'))   return {tag:'Galarian',  color:'#ec4899'};
-  if(name.includes('-hisui'))   return {tag:'Hisuian',   color:'#84cc16'};
-  if(name.includes('-paldea'))  return {tag:'Paldean',   color:'#f97316'};
-  if(name.includes('-mega'))    return {tag:'Mega',      color:'#6366f1'};
-  if(name.includes('-gmax'))    return {tag:'G-Max',     color:'#ef4444'};
-  if(name.includes('-primal'))  return {tag:'Primal',    color:'#dc2626'};
-  if(name.includes('-origin'))  return {tag:'Origin',    color:'#8b5cf6'};
-  if(name.includes('-therian')) return {tag:'Therian',   color:'#10b981'};
+  if(name.endsWith('-shadow'))   return {tag:'Shadow',   c:'#7c3aed'};
+  if(name.endsWith('-purified')) return {tag:'Purified',  c:'#0891b2'};
+  if(name.includes('-alola'))   return {tag:'Alolan',   c:'#d97706'};
+  if(name.includes('-galar'))   return {tag:'Galarian',  c:'#db2777'};
+  if(name.includes('-hisui'))   return {tag:'Hisuian',   c:'#65a30d'};
+  if(name.includes('-paldea'))  return {tag:'Paldean',   c:'#ea580c'};
+  if(name.includes('-mega'))    return {tag:'Mega',      c:'#4f46e5'};
+  if(name.includes('-gmax'))    return {tag:'G-Max',     c:'#dc2626'};
+  if(name.includes('-primal'))  return {tag:'Primal',    c:'#b91c1c'};
+  if(name.includes('-origin'))  return {tag:'Origin',    c:'#7c3aed'};
+  if(name.includes('-therian')) return {tag:'Therian',   c:'#0d9488'};
   return null;
 }
 
-function formatDisplayName(name) {
+function fmtName(name) {
   return name
-    .replace(/-mega-([xy])$/,(_, c)=>` Mega ${c.toUpperCase()}`)
+    .replace(/-mega-([xy])$/,(_,c)=>` Mega ${c.toUpperCase()}`)
     .replace(/-mega$/,' Mega').replace(/-gmax$/,' G-Max')
     .replace(/-alola$/,' (Alolan)').replace(/-galar$/,' (Galarian)')
     .replace(/-hisui$/,' (Hisuian)').replace(/-paldea$/,' (Paldean)')
     .replace(/-primal$/,' (Primal)').replace(/-origin$/,' (Origin)')
     .replace(/-therian$/,' (Therian)')
-    .split('-').map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');
+    .split('-').map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
 }
 
-// ── API ───────────────────────────────────────────────────────────────────
-const cache = {};
-async function fetchPokemon(key) {
-  key = String(key).toLowerCase();
-  if (cache[key]) return cache[key];
-  const r = await fetch(`https://pokeapi.co/api/v2/pokemon/${key}`);
-  if (!r.ok) throw new Error('not found');
-  return (cache[key] = await r.json());
-}
-async function fetchSpecies(key) {
-  const ck = `sp_${key}`;
-  if (cache[ck]) return cache[ck];
-  const r = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${key}`);
-  if (!r.ok) return null;
-  return (cache[ck] = await r.json());
-}
-async function fetchEvoChain(url) {
-  if (cache[url]) return cache[url];
-  const r = await fetch(url);
-  if (!r.ok) return null;
-  return (cache[url] = await r.json());
-}
-async function fetchPokemonList() {
-  if (cache['full_list']) return cache['full_list'];
-  const r = await fetch('https://pokeapi.co/api/v2/pokemon?limit=2000&offset=0');
-  const data = await r.json();
-  const list = data.results.map(p => {
-    const id = idFromUrl(p.url);
-    return { name:p.name, id, displayName:formatDisplayName(p.name), formTag:getFormTag(p.name), spriteId:id, isVirtual:false };
+// ── API ────────────────────────────────────────────────────────────────────
+const cache={};
+const fetchPoke    = async k => { k=String(k).toLowerCase(); if(cache[k]) return cache[k]; const r=await fetch(`https://pokeapi.co/api/v2/pokemon/${k}`); if(!r.ok) throw new Error(); return cache[k]=await r.json(); };
+const fetchSpecies = async k => { const ck=`sp_${k}`; if(cache[ck]) return cache[ck]; const r=await fetch(`https://pokeapi.co/api/v2/pokemon-species/${k}`); if(!r.ok) return null; return cache[ck]=await r.json(); };
+const fetchEvoChain= async u => { if(cache[u]) return cache[u]; const r=await fetch(u); if(!r.ok) return null; return cache[u]=await r.json(); };
+
+async function fetchList() {
+  if(cache._list) return cache._list;
+  const r=await fetch('https://pokeapi.co/api/v2/pokemon?limit=2000&offset=0');
+  const data=await r.json();
+  const list=data.results.map(p=>{ const id=idFromUrl(p.url); return{name:p.name,id,dn:fmtName(p.name),tag:getFormTag(p.name),sid:id,virtual:false}; });
+  SHADOW_IDS.forEach(id=>{
+    const base=list.find(p=>p.id===id&&!p.name.includes('-'));
+    if(!base) return;
+    list.push({name:base.name+'-shadow',  id,dn:fmtName(base.name)+' (Shadow)',  tag:{tag:'Shadow',  c:'#7c3aed'},sid:id,virtual:true,shadowType:'shadow',  baseName:base.name});
+    list.push({name:base.name+'-purified',id,dn:fmtName(base.name)+' (Purified)',tag:{tag:'Purified',c:'#0891b2'},sid:id,virtual:true,shadowType:'purified',baseName:base.name});
   });
-  // inject shadow / purified virtual entries
-  SHADOW_IDS.forEach(id => {
-    const base = list.find(p => p.id===id && !p.name.includes('-'));
-    if (!base) return;
-    list.push({ name:base.name+'-shadow',   id, displayName:formatDisplayName(base.name)+' (Shadow)',
-      formTag:{tag:'Shadow',color:'#7c3aed'},   spriteId:id, isVirtual:true, shadowType:'shadow',   baseName:base.name });
-    list.push({ name:base.name+'-purified', id, displayName:formatDisplayName(base.name)+' (Purified)',
-      formTag:{tag:'Purified',color:'#06b6d4'}, spriteId:id, isVirtual:true, shadowType:'purified', baseName:base.name });
-  });
-  return (cache['full_list'] = list);
+  return cache._list=list;
 }
 
-// ── SMALL COMPONENTS ──────────────────────────────────────────────────────
-function TypeBadge({ type, size='sm' }) {
-  const c = TYPE_COLORS[type]||'#888';
-  const p = size==='lg' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-xs';
-  return <span className={`type-badge ${p}`} style={{background:c+'33',color:c,border:`1px solid ${c}66`}}>{capitalize(type)}</span>;
+// ── ATOM COMPONENTS ────────────────────────────────────────────────────────
+function Spinner({size='md'}) {
+  const s=size==='sm'?20:size==='lg'?48:32;
+  const b=size==='sm'?2:3;
+  return <div className="spin" style={{width:s,height:s,borderRadius:'50%',border:`${b}px solid var(--s3)`,borderTopColor:'var(--accent)'}}/>;
 }
 
-function StatBar({ label, value, max=300, color='#818cf8' }) {
-  const pct = Math.min(100,(value/max)*100);
-  const auto = v => v>=200?'#34d399':v>=150?'#60a5fa':v>=100?'#818cf8':v>=50?'#fbbf24':'#f87171';
-  const bar = color==='auto' ? auto(value) : color;
+function TypeBadge({type,lg=false}) {
+  const c=TYPE_COLORS[type]||'#888';
+  return <span className={`tbadge${lg?' lg':''}`} style={{background:c+'28',color:c,border:`1px solid ${c}48`}}>{cap(type)}</span>;
+}
+
+function StatBar({label,value,max=300,auto=false}) {
+  const pct=Math.min(100,(value/max)*100);
+  const color=auto?(value>=200?'#4ade80':value>=150?'#60a5fa':value>=100?'#a78bfa':value>=50?'#fbbf24':'#f87171'):'var(--accent)';
   return (
-    <div className="flex items-center gap-2 mb-1.5">
-      <span className="text-gray-400 text-xs w-20 shrink-0">{label}</span>
-      <div className="stat-bar flex-1">
-        <div className="stat-fill" style={{width:`${pct}%`,background:`linear-gradient(90deg,${bar}aa,${bar})`}} />
+    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+      <span style={{color:'var(--muted)',fontSize:12,width:72,flexShrink:0,lineHeight:'1.3'}}>{label}</span>
+      <div className="sbar" style={{flex:1}}>
+        <div className="sbar-fill" style={{width:`${pct}%`,background:color}}/>
       </div>
-      <span className="text-white text-xs w-8 text-right font-semibold">{value}</span>
+      <span style={{color:'var(--text)',fontSize:12,width:28,textAlign:'right',fontWeight:600,flexShrink:0}}>{value}</span>
     </div>
   );
 }
 
-function Slider({ label, value, onChange, min=0, max=50, step=0.5, color='#6366f1', showInput=false }) {
-  const pct = ((value-min)/(max-min))*100;
+function RangeSlider({label,value,onChange,min=1,max=50,step=0.5,color='var(--accent)',showNum=false}) {
+  const pct=((value-min)/(max-min))*100;
   return (
-    <div className="glass rounded-xl p-4 space-y-2">
-      <div className="flex justify-between items-center">
-        <label className="text-gray-300 text-sm font-semibold">{label}</label>
-        {showInput ? (
-          <input type="number" value={value} min={min} max={max} step={step}
-            onChange={e=>{const v=parseFloat(e.target.value);if(v>=min&&v<=max&&(step<1||Number.isInteger(v/step)))onChange(v);}}
-            className="w-16 text-center bg-indigo-500/20 border border-indigo-500/40 rounded-lg px-2 py-0.5 text-indigo-300 font-bold text-sm focus:outline-none" />
-        ) : (
-          <span className="font-bold text-sm px-2 py-0.5 rounded-lg bg-white/10" style={{color}}>{value}</span>
-        )}
+    <div className="card3" style={{padding:'14px 16px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+        <span style={{fontWeight:600,fontSize:13}}>{label}</span>
+        {showNum
+          ? <input type="number" value={value} min={min} max={max} step={step}
+              onChange={e=>{const v=parseFloat(e.target.value);if(v>=min&&v<=max)onChange(v);}}
+              style={{width:54,textAlign:'center',padding:'3px 6px',borderRadius:6,border:`1px solid ${color}55`,background:color+'18',color,fontWeight:700,fontSize:13,outline:'none',fontFamily:'inherit'}}/>
+          : <span style={{fontWeight:700,fontSize:13,padding:'2px 10px',borderRadius:6,background:color+'18',color,border:`1px solid ${color}44`}}>{value}</span>
+        }
       </div>
-      <input type="range" min={min} max={max} step={step} value={value}
+      <input type="range" className="slider" min={min} max={max} step={step} value={value}
         onChange={e=>onChange(parseFloat(e.target.value))}
-        className="slider-thumb w-full"
-        style={{background:`linear-gradient(90deg,${color} ${pct}%,rgba(255,255,255,0.1) ${pct}%)`}} />
-      <div className="flex justify-between text-gray-600 text-xs"><span>{min}</span><span>{max}</span></div>
+        style={{background:`linear-gradient(90deg,${color} ${pct}%,var(--s3) ${pct}%)`}}/>
+      <div style={{display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--dim)',marginTop:4}}><span>{min}</span><span>{max}</span></div>
     </div>
   );
 }
 
-function IVSlider({ label, value, onChange, color }) {
+function IVSlider({label,value,onChange,color}) {
   return (
-    <div className="glass rounded-xl p-4 space-y-2">
-      <div className="flex justify-between items-center">
-        <label className="text-gray-300 text-sm font-semibold">{label}</label>
-        <div className="flex items-center gap-2">
-          <div className="flex gap-0.5">
+    <div className="card3" style={{padding:'14px 16px'}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8,marginBottom:10}}>
+        <span style={{fontWeight:600,fontSize:13,flexShrink:0}}>{label}</span>
+        <div style={{display:'flex',alignItems:'center',gap:8,minWidth:0}}>
+          <div style={{display:'flex',gap:2,overflow:'hidden',flexShrink:1}}>
             {[...Array(16)].map((_,i)=>(
-              <div key={i} className="w-1.5 h-3 rounded-sm cursor-pointer transition-all"
-                style={{background:i<=value?color:'rgba(255,255,255,0.1)'}}
-                onClick={()=>onChange(i)} />
+              <div key={i} onClick={()=>onChange(i)} style={{width:6,height:12,borderRadius:3,cursor:'pointer',flexShrink:0,
+                background:i<=value?color:'var(--s3)',transition:'background .1s'}}/>
             ))}
           </div>
           <input type="number" value={value} min={0} max={15}
             onChange={e=>{const v=parseInt(e.target.value);if(v>=0&&v<=15)onChange(v);}}
-            className="w-10 text-center bg-white/10 border border-white/20 rounded-lg px-1 py-0.5 text-white font-bold text-sm focus:outline-none focus:border-indigo-400" />
+            style={{width:38,textAlign:'center',padding:'3px 4px',borderRadius:6,border:`1px solid ${color}44`,background:color+'18',color,fontWeight:700,fontSize:13,outline:'none',fontFamily:'inherit',flexShrink:0}}/>
         </div>
       </div>
-      <input type="range" min={0} max={15} step={1} value={value}
+      <input type="range" className="slider" min={0} max={15} step={1} value={value}
         onChange={e=>onChange(parseInt(e.target.value))}
-        className="slider-thumb w-full"
-        style={{background:`linear-gradient(90deg,${color} ${(value/15)*100}%,rgba(255,255,255,0.1) ${(value/15)*100}%)`}} />
-      <div className="flex justify-between text-gray-600 text-xs"><span>0</span><span>15</span></div>
+        style={{background:`linear-gradient(90deg,${color} ${(value/15)*100}%,var(--s3) ${(value/15)*100}%)`}}/>
     </div>
   );
 }
 
-function LoadingSpinner({ size='md' }) {
-  const s = size==='sm'?'w-6 h-6':size==='lg'?'w-16 h-16':'w-10 h-10';
-  return <div className={`${s} border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin`} />;
-}
-
-function Toggle({ value, onChange, label }) {
+function Toggle({value,onChange,label}) {
   return (
-    <button onClick={()=>onChange(!value)}
-      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${value?'bg-indigo-600 text-white':'bg-white/10 text-gray-400 hover:bg-white/15'}`}>
+    <button className={`toggle-pill${value?' on':''}`} onClick={()=>onChange(!value)}>
       {label}
     </button>
   );
 }
 
-function PokemonImage({ pokemon, isShiny, is3D, shadowType, className='', size=96 }) {
-  const [err, setErr] = React.useState(false);
-  const [loaded, setLoaded] = React.useState(false);
-  React.useEffect(()=>{setErr(false);setLoaded(false);},[pokemon?.id,isShiny,is3D]);
-  let src = null;
-  if (!err) {
-    if (is3D) src = isShiny ? pokemon?.sprites?.other?.home?.front_shiny : pokemon?.sprites?.other?.home?.front_default;
-    if (!src) src = isShiny ? pokemon?.sprites?.other?.['official-artwork']?.front_shiny : pokemon?.sprites?.other?.['official-artwork']?.front_default;
-    if (!src) src = isShiny ? pokemon?.sprites?.front_shiny : pokemon?.sprites?.front_default;
-  }
-  const glowClass = isShiny ? 'shiny-glow' : shadowType==='shadow' ? 'shadow-glow' : shadowType==='purified' ? 'purified-glow' : '';
-  const imgFilter = shadowType==='purified' ? 'saturate(0.25) brightness(1.15)' : undefined;
+function Pokeball({size=32}) {
   return (
-    <div className="relative flex items-center justify-center" style={{width:size,height:size}}>
-      {!loaded && <LoadingSpinner size="sm" />}
-      {src && (
-        <img src={src} alt={pokemon?.name||''} width={size} height={size}
-          className={`pokemon-img ${glowClass} ${className} ${loaded?'opacity-100':'opacity-0'}`}
-          style={{transition:'opacity 0.3s',objectFit:'contain',width:size,height:size,filter:imgFilter}}
-          onLoad={()=>setLoaded(true)} onError={()=>{setErr(true);setLoaded(true);}} />
+    <div style={{width:size,height:size,borderRadius:'50%',flexShrink:0,background:'#e53e3e',position:'relative',overflow:'hidden',boxShadow:'0 2px 6px rgba(0,0,0,.45)'}}>
+      <div style={{position:'absolute',left:0,right:0,top:'50%',height:Math.max(2,size/16),background:'rgba(0,0,0,.3)',transform:'translateY(-50%)'}}/>
+      <div style={{position:'absolute',left:'50%',top:'50%',width:size*.28,height:size*.28,borderRadius:'50%',background:'#fff',transform:'translate(-50%,-50%)',border:`${Math.max(1.5,size/20)}px solid rgba(0,0,0,.18)`}}/>
+    </div>
+  );
+}
+
+function PokemonImage({poke,isShiny,is3D,shadowType,size=96}) {
+  const [err,setErr]=React.useState(false);
+  const [loaded,setLoaded]=React.useState(false);
+  React.useEffect(()=>{setErr(false);setLoaded(false);},[poke?.id,isShiny,is3D]);
+  let src=null;
+  if(!err){
+    if(is3D) src=isShiny?poke?.sprites?.other?.home?.front_shiny:poke?.sprites?.other?.home?.front_default;
+    if(!src) src=isShiny?poke?.sprites?.other?.['official-artwork']?.front_shiny:poke?.sprites?.other?.['official-artwork']?.front_default;
+    if(!src) src=isShiny?poke?.sprites?.front_shiny:poke?.sprites?.front_default;
+  }
+  const glowCls=isShiny?'glow-shiny':shadowType==='shadow'?'glow-shadow':shadowType==='purified'?'glow-purified':'';
+  const imgFilter=shadowType==='purified'?'saturate(.25) brightness(1.15)':undefined;
+  return (
+    <div style={{width:size,height:size,position:'relative',display:'flex',alignItems:'center',justifyContent:'center'}}>
+      {!loaded&&<Spinner size="sm"/>}
+      {src&&<img src={src} alt={poke?.name||''} width={size} height={size}
+        className={`pimg ${glowCls}`}
+        style={{objectFit:'contain',width:size,height:size,opacity:loaded?1:0,transition:'opacity .25s',filter:imgFilter}}
+        onLoad={()=>setLoaded(true)} onError={()=>{setErr(true);setLoaded(true);}}/>}
+      {shadowType==='shadow'&&loaded&&src&&(
+        <div style={{position:'absolute',inset:0,borderRadius:8,pointerEvents:'none',
+          background:'linear-gradient(150deg,rgba(88,28,235,.35) 0%,rgba(109,40,217,.2) 55%,transparent 100%)'}}/>
       )}
-      {shadowType==='shadow' && loaded && src && (
-        <div className="absolute inset-0 pointer-events-none rounded-lg"
-          style={{background:'linear-gradient(150deg,rgba(88,28,235,0.38) 0%,rgba(109,40,217,0.22) 55%,transparent 100%)'}} />
-      )}
-      {(!src||err) && loaded && (
-        <div className="flex items-center justify-center text-gray-600" style={{width:size,height:size}}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/>
-          </svg>
-        </div>
+      {(!src||err)&&loaded&&(
+        <svg width={Math.round(size*.4)} height={Math.round(size*.4)} viewBox="0 0 24 24" fill="none" stroke="var(--dim)" strokeWidth="1.5">
+          <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/>
+        </svg>
       )}
     </div>
   );
 }
 
-// ── SEARCH BAR ────────────────────────────────────────────────────────────
-function SearchBar({ onSelect, placeholder='Search Pokémon by name or ID...' }) {
-  const [query, setQuery] = React.useState('');
-  const [all, setAll] = React.useState([]);
-  const [results, setResults] = React.useState([]);
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
-  React.useEffect(()=>{ fetchPokemonList().then(setAll).catch(()=>{}); },[]);
+// ── SEARCH BAR ─────────────────────────────────────────────────────────────
+function SearchBar({onSelect,placeholder='Search by name or #…'}) {
+  const [q,setQ]=React.useState('');
+  const [all,setAll]=React.useState([]);
+  const [res,setRes]=React.useState([]);
+  const [open,setOpen]=React.useState(false);
+  const ref=React.useRef(null);
+  React.useEffect(()=>{fetchList().then(setAll).catch(()=>{}); },[]);
   React.useEffect(()=>{
-    if (!query.trim()) { setResults([]); setOpen(false); return; }
-    const q = query.toLowerCase().trim();
-    const f = all.filter(p=>p.name.includes(q)||p.displayName.toLowerCase().includes(q)||String(p.id).startsWith(q)).slice(0,14);
-    setResults(f); setOpen(f.length>0);
-  },[query,all]);
+    if(!q.trim()){setRes([]);setOpen(false);return;}
+    const lq=q.toLowerCase().trim();
+    const f=all.filter(p=>p.name.includes(lq)||p.dn.toLowerCase().includes(lq)||String(p.id).startsWith(lq)).slice(0,14);
+    setRes(f); setOpen(f.length>0);
+  },[q,all]);
   React.useEffect(()=>{
-    const h = e => { if(ref.current&&!ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown',h); return ()=>document.removeEventListener('mousedown',h);
+    const h=e=>{if(ref.current&&!ref.current.contains(e.target))setOpen(false);};
+    document.addEventListener('mousedown',h); return()=>document.removeEventListener('mousedown',h);
   },[]);
-  const select = p => { setQuery(''); setOpen(false); onSelect(p.name); };
-  const submit = e => { e.preventDefault(); if(query.trim()){ onSelect(query.trim().toLowerCase()); setQuery(''); setOpen(false); } };
+  const pick=p=>{setQ('');setOpen(false);onSelect(p.name);};
+  const submit=e=>{e.preventDefault();if(q.trim()){onSelect(q.trim().toLowerCase());setQ('');setOpen(false);}};
   return (
-    <div ref={ref} className="relative w-full max-w-xl">
-      <form onSubmit={submit} className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </div>
-        <input value={query} onChange={e=>setQuery(e.target.value)} onFocus={()=>results.length>0&&setOpen(true)}
-          placeholder={placeholder}
-          className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white/15 transition-all" />
+    <div ref={ref} style={{position:'relative',width:'100%'}}>
+      <form onSubmit={submit} style={{position:'relative'}}>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" strokeWidth="2.5"
+          style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input className="inp" value={q} onChange={e=>setQ(e.target.value)}
+          onFocus={()=>res.length>0&&setOpen(true)} placeholder={placeholder}
+          style={{paddingLeft:36,paddingRight:12}}/>
       </form>
-      {open && (
-        <div className="absolute top-full mt-2 w-full glass-dark rounded-xl overflow-hidden search-dropdown animate-fade-in shadow-2xl">
-          {results.map(p=>(
-            <button key={p.name} onClick={()=>select(p)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/10 transition-colors text-left">
-              <div className="relative shrink-0 w-8 h-8 flex items-center justify-center rounded-lg"
-                style={p.shadowType==='shadow'?{background:'rgba(88,28,235,0.25)',boxShadow:'0 0 8px rgba(124,58,237,0.5)'}:
-                       p.shadowType==='purified'?{background:'rgba(6,182,212,0.15)'}:{}}>
-                <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId||p.id}.png`}
-                  width="32" height="32" className="object-contain" alt=""
-                  style={p.shadowType==='purified'?{filter:'saturate(0.25) brightness(1.1)'}:{}} />
-                {p.shadowType==='shadow'&&<div className="absolute inset-0 rounded-lg pointer-events-none"
-                  style={{background:'linear-gradient(135deg,rgba(88,28,235,0.3),rgba(124,58,237,0.15))'}} />}
+      {open&&(
+        <div className="search-dd fade-in">
+          {res.map(p=>(
+            <button key={p.name} onClick={()=>pick(p)}
+              style={{width:'100%',display:'flex',alignItems:'center',gap:10,padding:'9px 14px',background:'none',border:'none',cursor:'pointer',textAlign:'left',transition:'background .12s'}}
+              onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.06)'}
+              onMouseLeave={e=>e.currentTarget.style.background='none'}>
+              <div style={{position:'relative',width:32,height:32,flexShrink:0,
+                background:p.shadowType==='shadow'?'rgba(88,28,235,.25)':p.shadowType==='purified'?'rgba(8,145,178,.15)':'var(--s3)',
+                borderRadius:8,display:'flex',alignItems:'center',justifyContent:'center',
+                boxShadow:p.shadowType==='shadow'?'0 0 8px rgba(124,58,237,.5)':'none'}}>
+                <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.sid||p.id}.png`}
+                  width="28" height="28" style={{objectFit:'contain',filter:p.shadowType==='purified'?'saturate(.25) brightness(1.1)':''}} alt=""/>
               </div>
-              <div className="flex flex-col min-w-0">
-                <span className="text-white text-sm font-medium truncate">{p.displayName}</span>
-                {p.formTag&&<span className="text-xs font-semibold" style={{color:p.formTag.color}}>{p.formTag.tag}</span>}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{color:'var(--text)',fontSize:13,fontWeight:500,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.dn}</div>
+                {p.tag&&<div style={{fontSize:11,fontWeight:600,color:p.tag.c,marginTop:1}}>{p.tag.tag}</div>}
               </div>
-              <span className="ml-auto text-gray-500 text-xs shrink-0">#{padId(p.id)}</span>
+              <span style={{color:'var(--dim)',fontSize:11,flexShrink:0}}>#{padId(p.id)}</span>
             </button>
           ))}
         </div>
@@ -543,102 +466,90 @@ function SearchBar({ onSelect, placeholder='Search Pokémon by name or ID...' })
   );
 }
 
-// ── POKÉDEX GRID ──────────────────────────────────────────────────────────
-function FormTag({ tag, color }) {
-  return <span className="text-xs font-bold px-1.5 py-0.5 rounded-md leading-none"
-    style={{background:color+'33',color,border:`1px solid ${color}55`}}>{tag}</span>;
-}
-
-function PokedexGrid({ onSelect, activeName }) {
-  const [all, setAll] = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [filter, setFilter] = React.useState('');
-  const [gen, setGen] = React.useState('all');
-  const [form, setForm] = React.useState('all');
-  const [page, setPage] = React.useState(0);
-  const PER = 48;
-  React.useEffect(()=>{ fetchPokemonList().then(l=>{setAll(l);setLoading(false);}).catch(()=>setLoading(false)); },[]);
-  const filtered = React.useMemo(()=>{
-    let list = all;
-    if(filter.trim()){ const q=filter.toLowerCase().trim(); list=list.filter(p=>p.name.includes(q)||p.displayName.toLowerCase().includes(q)||String(p.id).startsWith(q)); }
-    if(gen!=='all'){ const g=GENERATION_RANGES.find(x=>x.label===gen); if(g) list=list.filter(p=>p.id>=g.min&&p.id<=g.max); }
-    if(form==='base')     list=list.filter(p=>!p.isVirtual&&!p.formTag);
-    else if(form==='shadow')   list=list.filter(p=>p.shadowType==='shadow');
-    else if(form==='purified') list=list.filter(p=>p.shadowType==='purified');
-    else if(form==='alolan')   list=list.filter(p=>p.name.includes('-alola'));
-    else if(form==='galarian') list=list.filter(p=>p.name.includes('-galar'));
-    else if(form==='hisuian')  list=list.filter(p=>p.name.includes('-hisui'));
-    else if(form==='paldean')  list=list.filter(p=>p.name.includes('-paldea'));
-    else if(form==='mega')     list=list.filter(p=>p.name.includes('-mega')||p.name.includes('-primal'));
-    else if(form==='forms')    list=list.filter(p=>p.formTag&&!p.isVirtual);
-    return list;
+// ── DEX GRID ───────────────────────────────────────────────────────────────
+function DexGrid({onSelect,activeName}) {
+  const [all,setAll]=React.useState([]);
+  const [loading,setLoading]=React.useState(true);
+  const [filter,setFilter]=React.useState('');
+  const [gen,setGen]=React.useState('all');
+  const [form,setForm]=React.useState('all');
+  const [page,setPage]=React.useState(0);
+  const PER=48;
+  React.useEffect(()=>{fetchList().then(l=>{setAll(l);setLoading(false);}).catch(()=>setLoading(false));  },[]);
+  const filtered=React.useMemo(()=>{
+    let l=all;
+    if(filter.trim()){const lq=filter.toLowerCase().trim(); l=l.filter(p=>p.name.includes(lq)||p.dn.toLowerCase().includes(lq)||String(p.id).startsWith(lq));}
+    if(gen!=='all'){const g=GENS.find(x=>x.label===gen); if(g) l=l.filter(p=>p.id>=g.min&&p.id<=g.max);}
+    if(form==='base')     l=l.filter(p=>!p.virtual&&!p.tag);
+    else if(form==='shadow')   l=l.filter(p=>p.shadowType==='shadow');
+    else if(form==='purified') l=l.filter(p=>p.shadowType==='purified');
+    else if(form==='alolan')   l=l.filter(p=>p.name.includes('-alola'));
+    else if(form==='galarian') l=l.filter(p=>p.name.includes('-galar'));
+    else if(form==='hisuian')  l=l.filter(p=>p.name.includes('-hisui'));
+    else if(form==='mega')     l=l.filter(p=>p.name.includes('-mega')||p.name.includes('-primal'));
+    else if(form==='forms')    l=l.filter(p=>p.tag&&!p.virtual);
+    return l;
   },[all,filter,gen,form]);
   React.useEffect(()=>setPage(0),[filter,gen,form]);
-  const pages = Math.ceil(filtered.length/PER);
-  const visible = filtered.slice(page*PER,(page+1)*PER);
-  const formBtns = [
-    {id:'all',label:'All'},{id:'base',label:'Base'},
-    {id:'alolan',label:'Alolan',c:'#f59e0b'},{id:'galarian',label:'Galarian',c:'#ec4899'},
-    {id:'hisuian',label:'Hisuian',c:'#84cc16'},{id:'paldean',label:'Paldean',c:'#f97316'},
-    {id:'mega',label:'Mega',c:'#6366f1'},{id:'forms',label:'Other Forms',c:'#a78bfa'},
-    {id:'shadow',label:'👻 Shadow',c:'#7c3aed'},{id:'purified',label:'✨ Purified',c:'#06b6d4'},
-  ];
+  const pages=Math.ceil(filtered.length/PER);
+  const visible=filtered.slice(page*PER,(page+1)*PER);
+  const formBtns=[{id:'all',l:'All'},{id:'base',l:'Base'},{id:'alolan',l:'Alolan',c:'#d97706'},{id:'galarian',l:'Galarian',c:'#db2777'},{id:'hisuian',l:'Hisuian',c:'#65a30d'},{id:'mega',l:'Mega',c:'#4f46e5'},{id:'forms',l:'Forms',c:'#7c3aed'},{id:'shadow',l:'Shadow',c:'#7c3aed'},{id:'purified',l:'Purified',c:'#0891b2'}];
   return (
-    <div className="space-y-3">
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        </div>
-        <input value={filter} onChange={e=>setFilter(e.target.value)} placeholder="Filter by name or #..."
-          className="w-full pl-8 pr-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-        {filter&&<button onClick={()=>setFilter('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 text-xs">✕</button>}
+    <div style={{display:'flex',flexDirection:'column',gap:10}}>
+      {/* Search */}
+      <div style={{position:'relative'}}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--dim)" strokeWidth="2.5"
+          style={{position:'absolute',left:10,top:'50%',transform:'translateY(-50%)',pointerEvents:'none'}}>
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input className="inp" value={filter} onChange={e=>setFilter(e.target.value)}
+          placeholder="Filter…" style={{paddingLeft:30,paddingRight:filter?28:12,fontSize:13}}/>
+        {filter&&<button onClick={()=>setFilter('')}
+          style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--dim)',cursor:'pointer',fontSize:14,lineHeight:1,padding:2}}>✕</button>}
       </div>
-      <div className="flex gap-1 flex-wrap">
-        <button onClick={()=>setGen('all')} className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${gen==='all'?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>All</button>
-        {GENERATION_RANGES.map(g=>(
-          <button key={g.label} onClick={()=>setGen(g.label)} className={`px-2 py-1 rounded-md text-xs font-semibold transition-all ${gen===g.label?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>{g.label}</button>
+      {/* Gen tabs */}
+      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+        <button className={`btn${gen==='all'?' active-blue':''}`} style={{padding:'4px 9px',fontSize:11}} onClick={()=>setGen('all')}>All</button>
+        {GENS.map(g=>(
+          <button key={g.label} className={`btn${gen===g.label?' active-blue':''}`} style={{padding:'4px 9px',fontSize:11}} onClick={()=>setGen(g.label)}>{g.label}</button>
         ))}
       </div>
-      <div className="flex gap-1 flex-wrap">
+      {/* Form filters */}
+      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
         {formBtns.map(f=>(
           <button key={f.id} onClick={()=>setForm(f.id)}
-            className="px-2 py-0.5 rounded-md text-xs font-semibold transition-all"
-            style={form===f.id?{background:(f.c||'#6366f1')+'33',color:f.c||'#818cf8',border:`1px solid ${f.c||'#6366f1'}55`}:{background:'rgba(255,255,255,0.06)',color:'#6b7280',border:'1px solid rgba(255,255,255,0.1)'}}>
-            {f.label}
+            style={{padding:'3px 9px',borderRadius:20,fontSize:11,fontWeight:600,fontFamily:'inherit',cursor:'pointer',border:`1px solid ${form===f.id?(f.c||'var(--accent)'):'var(--border2)'}`,background:form===f.id?(f.c||'var(--accent)')+'22':'transparent',color:form===f.id?(f.c||'var(--accent-light)'):'var(--muted)',transition:'all .15s'}}>
+            {f.l}
           </button>
         ))}
       </div>
-      <p className="text-gray-600 text-xs">{filtered.length.toLocaleString()} Pokémon</p>
-      {loading ? <div className="flex justify-center py-8"><LoadingSpinner /></div> : (
+      <div style={{fontSize:11,color:'var(--dim)'}}>{filtered.length.toLocaleString()} Pokémon</div>
+      {loading?<div style={{display:'flex',justifyContent:'center',padding:32}}><Spinner/></div>:(
         <>
-          <div className="pokedex-grid max-h-[480px] overflow-y-auto pr-1">
-            {visible.map(p=>{
-              const isActive = activeName===p.name;
-              return (
-                <button key={p.name} onClick={()=>onSelect(p.name)}
-                  className={`card-hover glass rounded-xl p-2 flex flex-col items-center gap-1 transition-all duration-200 ${isActive?'ring-2 ring-indigo-500 bg-indigo-500/20':'hover:bg-white/10'}`}>
-                  <div className="relative" style={{width:52,height:52}}>
-                    <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.spriteId||p.id}.png`}
-                      width="52" height="52" className="object-contain" alt={p.displayName} loading="lazy"
-                      style={p.shadowType==='purified'?{filter:'saturate(0.25) brightness(1.1)'}:{}} />
-                    {p.shadowType==='shadow'&&<div className="absolute inset-0 rounded-md pointer-events-none"
-                      style={{background:'linear-gradient(150deg,rgba(88,28,235,0.4) 0%,rgba(109,40,217,0.25) 60%,transparent 100%)'}} />}
-                  </div>
-                  <span className="text-gray-300 text-xs font-medium leading-tight text-center line-clamp-2">{p.displayName}</span>
-                  <div className="flex flex-wrap gap-0.5 justify-center">
-                    <span className="text-gray-600 text-xs">#{padId(p.id)}</span>
-                    {p.formTag&&<FormTag tag={p.formTag.tag} color={p.formTag.color} />}
-                  </div>
-                </button>
-              );
-            })}
-            {visible.length===0&&<div className="col-span-full py-8 text-center text-gray-600 text-sm">No Pokémon match your filters</div>}
+          <div className="dex-grid" style={{maxHeight:460,overflowY:'auto',paddingRight:2}}>
+            {visible.map(p=>(
+              <button key={p.name} onClick={()=>onSelect(p.name)}
+                className={`dex-card${activeName===p.name?' sel':''}`}>
+                <div style={{position:'relative',width:52,height:52,display:'flex',alignItems:'center',justifyContent:'center'}}>
+                  <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.sid||p.id}.png`}
+                    width="48" height="48" loading="lazy" alt={p.dn}
+                    style={{objectFit:'contain',filter:p.shadowType==='purified'?'saturate(.25) brightness(1.1)':''}}/>
+                  {p.shadowType==='shadow'&&<div style={{position:'absolute',inset:0,borderRadius:6,background:'linear-gradient(150deg,rgba(88,28,235,.38) 0%,rgba(109,40,217,.22) 55%,transparent 100%)',pointerEvents:'none'}}/>}
+                </div>
+                <span style={{fontSize:11,fontWeight:500,color:'var(--text)',lineHeight:1.3,textAlign:'center',wordBreak:'break-word',maxWidth:'100%'}}>{p.dn}</span>
+                <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',alignItems:'center'}}>
+                  <span style={{fontSize:10,color:'var(--dim)'}}>#{padId(p.id)}</span>
+                  {p.tag&&<span style={{fontSize:9,fontWeight:700,padding:'1px 5px',borderRadius:10,background:p.tag.c+'28',color:p.tag.c}}>{p.tag.tag}</span>}
+                </div>
+              </button>
+            ))}
+            {visible.length===0&&<div style={{gridColumn:'1/-1',padding:32,textAlign:'center',color:'var(--dim)',fontSize:13}}>No Pokémon found</div>}
           </div>
           {pages>1&&(
-            <div className="flex items-center justify-between gap-2">
-              <button onClick={()=>setPage(p=>Math.max(0,p-1))} disabled={page===0} className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">← Prev</button>
-              <span className="text-gray-500 text-xs">{page+1} / {pages}</span>
-              <button onClick={()=>setPage(p=>Math.min(pages-1,p+1))} disabled={page===pages-1} className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">Next →</button>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+              <button className="btn" style={{padding:'5px 12px',fontSize:12}} disabled={page===0} onClick={()=>setPage(p=>Math.max(0,p-1))}>← Prev</button>
+              <span style={{fontSize:12,color:'var(--muted)'}}>{page+1} / {pages}</span>
+              <button className="btn" style={{padding:'5px 12px',fontSize:12}} disabled={page===pages-1} onClick={()=>setPage(p=>Math.min(pages-1,p+1))}>Next →</button>
             </div>
           )}
         </>
@@ -647,185 +558,260 @@ function PokedexGrid({ onSelect, activeName }) {
   );
 }
 
-// ── DETAIL PANEL ──────────────────────────────────────────────────────────
-function DetailPanel({ pokemon, species }) {
-  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
-  const types = pokemon?.types?.map(t=>t.type.name)||[];
-  const {weak, resist, immune} = getTypeWeaknesses(types);
-  if (!pokemon) return null;
-  const flavor = species?.flavor_text_entries?.find(f=>f.language.name==='en')?.flavor_text?.replace(/\f|\n/g,' ')||'';
+// ── POKEMON CARD ───────────────────────────────────────────────────────────
+function PokemonCard({poke,species,isShiny,is3D,shadowType,onShiny,on3D}) {
+  const gs=goStats(poke);
+  const types=poke.types.map(t=>t.type.name);
+  const tc=TYPE_COLORS[types[0]]||'var(--accent)';
+  const shadowColor=shadowType==='shadow'?'#7c3aed':shadowType==='purified'?'#0891b2':null;
+  const dispAtk=shadowType==='shadow'?Math.round(gs.atk*1.2):gs.atk;
+  const dispDef=shadowType==='shadow'?Math.round(gs.def*.8):gs.def;
+  const maxCP=calcCP(gs.atk,gs.def,gs.hp,15,15,15,50);
+  const genus=species?.genera?.find(g=>g.language.name==='en')?.genus||'';
+  const spriteFilter=shadowType==='purified'?'saturate(.25) brightness(1.15)':undefined;
+  const spriteSize=typeof window!=='undefined'&&window.innerWidth<480?120:156;
   return (
-    <div className="animate-slide-up space-y-4">
-      <div className="flex gap-2 flex-wrap">{types.map(t=><TypeBadge key={t} type={t} size="lg" />)}</div>
-      {flavor&&<p className="text-gray-400 text-sm leading-relaxed italic">"{flavor}"</p>}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="glass rounded-xl p-3 text-center"><p className="text-gray-500 text-xs">Height</p><p className="text-white font-bold">{(pokemon.height/10).toFixed(1)} m</p></div>
-        <div className="glass rounded-xl p-3 text-center"><p className="text-gray-500 text-xs">Weight</p><p className="text-white font-bold">{(pokemon.weight/10).toFixed(1)} kg</p></div>
+    <div className="card" style={{overflow:'hidden',border:`1px solid ${shadowColor?shadowColor+'44':tc+'38'}`}}>
+      {/* Shadow/Purified banner */}
+      {shadowColor&&(
+        <div style={{padding:'8px 16px 0'}}>
+          <div style={{padding:'6px 12px',borderRadius:8,background:shadowColor+'20',border:`1px solid ${shadowColor}38`,color:shadowColor,fontSize:12,fontWeight:600,display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <span>{shadowType==='shadow'?'👻 Shadow':'✨ Purified'}</span>
+            <span style={{fontWeight:400,opacity:.75,fontSize:11}}>
+              {shadowType==='shadow'?'×1.2 ATK / ×0.8 DEF in raids':'IV floor +2 when purified'}
+            </span>
+          </div>
+        </div>
+      )}
+      {/* Header */}
+      <div style={{padding:'16px 16px 4px',background:`linear-gradient(160deg,${tc}18 0%,transparent 70%)`}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+          <div style={{minWidth:0}}>
+            <div style={{fontSize:11,color:'var(--dim)',fontWeight:500,marginBottom:2}}>#{padId(poke.id)}</div>
+            <h2 style={{fontSize:20,fontWeight:800,letterSpacing:'-.02em',lineHeight:1.1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fmtName(poke.name)}</h2>
+            {genus&&<div style={{fontSize:11,color:'var(--muted)',marginTop:2}}>{genus}</div>}
+            <div style={{display:'flex',gap:5,marginTop:8,flexWrap:'wrap'}}>
+              {types.map(t=><TypeBadge key={t} type={t} lg/>)}
+            </div>
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:6,alignItems:'flex-end',flexShrink:0}}>
+            <Toggle value={isShiny} onChange={onShiny} label="✨ Shiny"/>
+            <Toggle value={is3D}    onChange={on3D}    label="🎮 3D"/>
+          </div>
+        </div>
+        {/* Sprite */}
+        <div style={{display:'flex',justifyContent:'center',marginTop:4,position:'relative'}}>
+          <div style={{position:'absolute',width:140,height:140,borderRadius:'50%',background:shadowType==='shadow'?`radial-gradient(circle,${shadowColor}44 0%,transparent 70%)`:tc+'28',filter:'blur(24px)',top:'50%',left:'50%',transform:'translate(-50%,-50%)',pointerEvents:'none'}}/>
+          <div style={spriteFilter?{filter:spriteFilter}:{}}> 
+            <PokemonImage poke={poke} isShiny={isShiny} is3D={is3D} shadowType={shadowType} size={spriteSize}/>
+          </div>
+        </div>
+        {isShiny&&(
+          <div style={{position:'absolute',top:16,left:'50%',transform:'translateX(-50%)'}}>
+            <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(251,191,36,.15)',color:'#fbbf24',border:'1px solid rgba(251,191,36,.3)'}}>✨ Shiny</span>
+          </div>
+        )}
       </div>
-
-      {/* Pokémon GO Stats only */}
-      <div className="glass rounded-xl p-4">
-        <p className="text-gray-400 text-xs uppercase tracking-widest mb-3 font-semibold">Pokémon GO Stats</p>
-        <StatBar label="Attack"  value={goStats.attack}  max={300} color="auto" />
-        <StatBar label="Defense" value={goStats.defense} max={300} color="auto" />
-        <StatBar label="HP"      value={goStats.hp}      max={500} color="auto" />
-        <div className="mt-3 pt-3 border-t border-white/10 grid grid-cols-3 gap-2 text-center">
-          {[['Attack',goStats.attack,'#f87171'],['Defense',goStats.defense,'#60a5fa'],['HP',goStats.hp,'#34d399']].map(([l,v,c])=>(
-            <div key={l} className="rounded-lg p-2" style={{background:c+'15',border:`1px solid ${c}30`}}>
-              <p className="text-xs font-medium" style={{color:c}}>{l}</p>
-              <p className="text-white font-black text-lg">{v}</p>
+      {/* Stats row */}
+      <div style={{padding:'4px 16px 16px'}}>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginBottom:10}}>
+          {[['Attack',dispAtk,'#f87171'],['Defense',dispDef,'#60a5fa'],['HP',gs.hp,'#4ade80']].map(([l,v,c])=>(
+            <div key={l} style={{textAlign:'center',padding:'8px 6px',borderRadius:10,background:c+'14',border:`1px solid ${c}28`}}>
+              <div style={{fontSize:10,fontWeight:600,color:c,marginBottom:2}}>{l}</div>
+              <div style={{fontSize:18,fontWeight:800,color:'var(--text)',lineHeight:1}}>{v}</div>
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Type chart */}
-      <div className="glass rounded-xl p-4 space-y-3">
-        <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold">Type Match-Ups</p>
-        {weak.length>0&&(<div><p className="text-red-400 text-xs mb-1.5 font-semibold">Weak Against</p>
-          <div className="flex flex-wrap gap-1.5">{weak.map(({type,mult})=>(
-            <div key={type} className="flex items-center gap-1"><TypeBadge type={type}/><span className="text-red-400 text-xs font-bold">{mult}×</span></div>
-          ))}</div></div>)}
-        {resist.length>0&&(<div><p className="text-green-400 text-xs mb-1.5 font-semibold">Resistant To</p>
-          <div className="flex flex-wrap gap-1.5">{resist.map(({type,mult})=>(
-            <div key={type} className="flex items-center gap-1"><TypeBadge type={type}/><span className="text-green-400 text-xs font-bold">{mult}×</span></div>
-          ))}</div></div>)}
-        {immune.length>0&&(<div><p className="text-gray-400 text-xs mb-1.5 font-semibold">Immune To</p>
-          <div className="flex flex-wrap gap-1.5">{immune.map(({type})=>(
-            <div key={type} className="flex items-center gap-1"><TypeBadge type={type}/><span className="text-gray-400 text-xs font-bold">0×</span></div>
-          ))}</div></div>)}
+        <div style={{textAlign:'center'}}>
+          <div style={{fontSize:10,color:'var(--dim)',marginBottom:2}}>Max CP · Lv50 · 15/15/15</div>
+          <div style={{fontSize:22,fontWeight:800,color:'var(--accent-light)',letterSpacing:'-.02em'}}>{maxCP.toLocaleString()}</div>
+        </div>
       </div>
     </div>
   );
 }
 
-// ── CP CALCULATOR ─────────────────────────────────────────────────────────
-function CPCalculator({ pokemon }) {
-  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
-  const [tab, setTab]     = React.useState('calc');
-  const [level, setLevel] = React.useState(40);
-  const [aIV, setAIV]     = React.useState(15);
-  const [dIV, setDIV]     = React.useState(15);
-  const [hIV, setHIV]     = React.useState(15);
-  const [inputCP, setInputCP]       = React.useState('');
-  const [inputLv, setInputLv]       = React.useState('');
-  const [lookupRes, setLookupRes]   = React.useState(null);
-  const [lookupBusy, setLookupBusy] = React.useState(false);
-  const cp    = React.useMemo(()=>goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,aIV,dIV,hIV,level):0,[goStats,level,aIV,dIV,hIV]);
-  const hp    = React.useMemo(()=>goStats?calcHP(goStats.hp,hIV,level):0,[goStats,hIV,level]);
-  const maxCP = React.useMemo(()=>goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,50):0,[goStats]);
-  const pct   = maxCP>0?Math.min(100,(cp/maxCP)*100):0;
-  const ivColor = p => p===100?'#fbbf24':p>=98?'#34d399':p>=93?'#60a5fa':p>=82?'#818cf8':'#9ca3af';
-  const runLookup = ()=>{
-    const t=parseInt(inputCP); if(!goStats||!t||t<10) return;
-    setLookupBusy(true); setLookupRes(null);
-    setTimeout(()=>{
-      let r=reverseLookupCP(goStats,t);
-      if(inputLv){ const lv=parseFloat(inputLv); r=r.filter(x=>x.level===lv); }
-      r.sort((a,b)=>b.ivPct-a.ivPct);
-      setLookupRes(r); setLookupBusy(false);
-    },10);
-  };
-  if (!pokemon) return (
-    <div className="flex flex-col items-center justify-center h-48 text-gray-600 gap-3">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/></svg>
-      <p className="text-sm">Select a Pokémon to calculate CP</p>
+// ── DETAIL PANEL ───────────────────────────────────────────────────────────
+function DetailPanel({poke,species}) {
+  const gs=goStats(poke);
+  const types=poke.types.map(t=>t.type.name);
+  const {weak,resist,immune}=typeWeaknesses(types);
+  const flavor=species?.flavor_text_entries?.find(f=>f.language.name==='en')?.flavor_text?.replace(/\f|\n/g,' ')||'';
+  const S={fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--muted)',marginBottom:8,display:'block'};
+  return (
+    <div className="slide-up" style={{display:'flex',flexDirection:'column',gap:14}}>
+      {flavor&&<p style={{fontSize:13,color:'var(--muted)',lineHeight:1.6,fontStyle:'italic'}}>"{flavor}"</p>}
+      {/* Height / Weight */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+        {[['Height',`${(poke.height/10).toFixed(1)} m`],['Weight',`${(poke.weight/10).toFixed(1)} kg`]].map(([l,v])=>(
+          <div key={l} className="card2" style={{padding:'10px 12px',textAlign:'center'}}>
+            <div style={{fontSize:10,color:'var(--muted)',marginBottom:3,fontWeight:500}}>{l}</div>
+            <div style={{fontSize:15,fontWeight:700}}>{v}</div>
+          </div>
+        ))}
+      </div>
+      {/* GO Stats */}
+      <div className="card2" style={{padding:'14px 16px'}}>
+        <span style={S}>Pokémon GO Stats</span>
+        <StatBar label="Attack"  value={gs.atk} max={300} auto/>
+        <StatBar label="Defense" value={gs.def} max={300} auto/>
+        <StatBar label="HP"      value={gs.hp}  max={500} auto/>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6,marginTop:12,paddingTop:12,borderTop:'1px solid var(--border)'}}>
+          {[['Attack',gs.atk,'#f87171'],['Defense',gs.def,'#60a5fa'],['HP',gs.hp,'#4ade80']].map(([l,v,c])=>(
+            <div key={l} style={{textAlign:'center',padding:'6px 4px',borderRadius:8,background:c+'14',border:`1px solid ${c}28`}}>
+              <div style={{fontSize:10,fontWeight:600,color:c,marginBottom:1}}>{l}</div>
+              <div style={{fontSize:16,fontWeight:800,color:'var(--text)'}}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Type chart */}
+      <div className="card2" style={{padding:'14px 16px',display:'flex',flexDirection:'column',gap:10}}>
+        <span style={S}>Type Match-Ups</span>
+        {weak.length>0&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:'#f87171',marginBottom:6}}>Weak Against</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {weak.map(({t,m})=><div key={t} style={{display:'flex',alignItems:'center',gap:4}}><TypeBadge type={t}/><span style={{fontSize:11,fontWeight:700,color:'#f87171'}}>{m}×</span></div>)}
+            </div>
+          </div>
+        )}
+        {resist.length>0&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:'#4ade80',marginBottom:6}}>Resistant To</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {resist.map(({t,m})=><div key={t} style={{display:'flex',alignItems:'center',gap:4}}><TypeBadge type={t}/><span style={{fontSize:11,fontWeight:700,color:'#4ade80'}}>{m}×</span></div>)}
+            </div>
+          </div>
+        )}
+        {immune.length>0&&(
+          <div>
+            <div style={{fontSize:11,fontWeight:600,color:'var(--muted)',marginBottom:6}}>Immune To</div>
+            <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+              {immune.map(({t})=><div key={t} style={{display:'flex',alignItems:'center',gap:4}}><TypeBadge type={t}/><span style={{fontSize:11,fontWeight:700,color:'var(--muted)'}}>0×</span></div>)}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
+}
+
+// ── CP CALCULATOR ──────────────────────────────────────────────────────────
+function CPCalc({poke}) {
+  const gs=React.useMemo(()=>poke?goStats(poke):null,[poke]);
+  const [tab,setTab]=React.useState('calc');
+  const [lv,setLv]=React.useState(40);
+  const [aIV,setAIV]=React.useState(15);
+  const [dIV,setDIV]=React.useState(15);
+  const [hIV,setHIV]=React.useState(15);
+  const [cpIn,setCpIn]=React.useState('');
+  const [lvIn,setLvIn]=React.useState('');
+  const [res,setRes]=React.useState(null);
+  const [busy,setBusy]=React.useState(false);
+  const cp=React.useMemo(()=>gs?calcCP(gs.atk,gs.def,gs.hp,aIV,dIV,hIV,lv):0,[gs,lv,aIV,dIV,hIV]);
+  const hp=React.useMemo(()=>gs?calcHP(gs.hp,hIV,lv):0,[gs,hIV,lv]);
+  const maxCP=React.useMemo(()=>gs?calcCP(gs.atk,gs.def,gs.hp,15,15,15,50):0,[gs]);
+  const pct=maxCP>0?Math.min(100,(cp/maxCP)*100):0;
+  const ivColor=p=>p===100?'#fbbf24':p>=98?'#4ade80':p>=93?'#60a5fa':p>=82?'#a78bfa':'var(--muted)';
+  const doLookup=()=>{
+    const t=parseInt(cpIn); if(!gs||!t||t<10) return;
+    setBusy(true); setRes(null);
+    setTimeout(()=>{
+      let r=reverseLookup(gs,t);
+      if(lvIn){const lv=parseFloat(lvIn);r=r.filter(x=>x.lv===lv);}
+      r.sort((a,b)=>b.pct-a.pct); setRes(r); setBusy(false);
+    },10);
+  };
+  if(!poke) return <div style={{padding:'40px 0',textAlign:'center',color:'var(--dim)',fontSize:13}}>Select a Pokémon first</div>;
   return (
-    <div className="animate-slide-up space-y-4">
-      <div className="flex rounded-xl overflow-hidden border border-white/10">
-        {[['calc','⚡ Calculate CP'],['lookup','🔍 CP → IVs']].map(([id,lbl])=>(
-          <button key={id} onClick={()=>setTab(id)}
-            className={`flex-1 py-2.5 text-sm font-semibold transition-all ${tab===id?'tab-active text-white':'text-gray-500 hover:text-gray-300 bg-white/5'}`}>{lbl}</button>
+    <div className="slide-up" style={{display:'flex',flexDirection:'column',gap:12}}>
+      {/* Mode toggle */}
+      <div style={{display:'flex',borderRadius:10,overflow:'hidden',border:'1px solid var(--border2)'}}>
+        {[['calc','⚡ Calculate'],['lookup','🔍 CP → IVs']].map(([id,l])=>(
+          <button key={id} onClick={()=>setTab(id)} style={{flex:1,padding:'9px 12px',fontSize:13,fontWeight:600,fontFamily:'inherit',border:'none',cursor:'pointer',transition:'background .15s, color .15s',
+            background:tab===id?'var(--s3)':'transparent',color:tab===id?'var(--text)':'var(--muted)'}}>
+            {l}
+          </button>
         ))}
       </div>
 
       {tab==='calc'&&(<>
-        <div className="cp-display rounded-2xl p-5 text-center">
-          <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Combat Power</p>
-          <p className="text-6xl font-black text-white tracking-tight">{cp.toLocaleString()}</p>
-          <div className="mt-3 stat-bar max-w-xs mx-auto">
-            <div className="stat-fill" style={{width:`${pct}%`,background:'linear-gradient(90deg,#6366f1,#a855f7,#ec4899)'}} />
+        {/* CP display */}
+        <div className="card2" style={{padding:'20px 16px',textAlign:'center',borderColor:'rgba(99,102,241,.25)'}}>
+          <div style={{fontSize:10,fontWeight:700,textTransform:'uppercase',letterSpacing:'.08em',color:'var(--muted)',marginBottom:6}}>Combat Power</div>
+          <div style={{fontSize:52,fontWeight:800,lineHeight:1,letterSpacing:'-.03em',color:'var(--text)'}}>{cp.toLocaleString()}</div>
+          <div style={{height:5,borderRadius:99,background:'var(--s3)',margin:'12px auto',maxWidth:240,overflow:'hidden'}}>
+            <div style={{height:'100%',borderRadius:99,background:'linear-gradient(90deg,var(--accent),#a78bfa)',width:`${pct}%`,transition:'width .6s cubic-bezier(.4,0,.2,1)'}}/>
           </div>
-          <p className="text-gray-500 text-xs mt-1">{pct.toFixed(1)}% of max CP ({maxCP.toLocaleString()})</p>
+          <div style={{fontSize:11,color:'var(--dim)'}}>{pct.toFixed(1)}% of max {maxCP.toLocaleString()}</div>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[['Attack',goStats.attack+aIV,'#f87171'],['Defense',goStats.defense+dIV,'#60a5fa'],['HP',hp,'#34d399']].map(([l,v,c])=>(
-            <div key={l} className="glass rounded-xl p-2.5" style={{border:`1px solid ${c}30`}}>
-              <p className="text-xs font-medium" style={{color:c}}>{l}</p>
-              <p className="text-white font-bold text-lg">{v}</p>
+        {/* ATK / DEF / HP */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
+          {[['Attack',gs.atk+aIV,'#f87171'],['Defense',gs.def+dIV,'#60a5fa'],['HP',hp,'#4ade80']].map(([l,v,c])=>(
+            <div key={l} className="card3" style={{padding:'8px 6px',textAlign:'center'}}>
+              <div style={{fontSize:10,fontWeight:600,color:c,marginBottom:2}}>{l}</div>
+              <div style={{fontSize:17,fontWeight:800}}>{v}</div>
             </div>
           ))}
         </div>
-        <Slider label="Level" value={level} onChange={setLevel} min={1} max={50} step={0.5} color="#6366f1" showInput={true} />
-        <IVSlider label="Attack IV"  value={aIV} onChange={setAIV} color="#f87171" />
-        <IVSlider label="Defense IV" value={dIV} onChange={setDIV} color="#60a5fa" />
-        <IVSlider label="HP IV"      value={hIV} onChange={setHIV} color="#34d399" />
+        <RangeSlider label="Level" value={lv} onChange={setLv} min={1} max={50} step={0.5} color="var(--accent)" showNum/>
+        <IVSlider label="Attack IV"  value={aIV} onChange={setAIV} color="#f87171"/>
+        <IVSlider label="Defense IV" value={dIV} onChange={setDIV} color="#60a5fa"/>
+        <IVSlider label="HP IV"      value={hIV} onChange={setHIV} color="#4ade80"/>
       </>)}
 
       {tab==='lookup'&&(
-        <div className="space-y-4">
-          <p className="text-gray-400 text-sm">Enter a CP value (and optionally a level) to find all matching IV combinations.</p>
-          <div className="glass rounded-xl p-4 space-y-3">
-            <div className="flex gap-3">
-              <div className="flex-1">
-                <label className="text-gray-400 text-xs font-semibold block mb-1">CP Value</label>
-                <input type="number" value={inputCP} onChange={e=>setInputCP(e.target.value)} onKeyDown={e=>e.key==='Enter'&&runLookup()}
-                  placeholder="e.g. 2532" className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+          <p style={{fontSize:13,color:'var(--muted)',lineHeight:1.5}}>Enter a CP and optionally a level to see every IV combination that matches.</p>
+          <div className="card2" style={{padding:'14px 16px',display:'flex',flexDirection:'column',gap:10}}>
+            <div style={{display:'flex',flexDirection:'column',gap:8}}>
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--muted)',display:'block',marginBottom:4}}>CP Value</label>
+                <input className="inp" type="number" value={cpIn} onChange={e=>setCpIn(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doLookup()} placeholder="e.g. 2532"/>
               </div>
-              <div className="w-28">
-                <label className="text-gray-400 text-xs font-semibold block mb-1">Level (optional)</label>
-                <input type="number" value={inputLv} onChange={e=>setInputLv(e.target.value)} placeholder="e.g. 20" min="1" max="50" step="0.5"
-                  className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+              <div>
+                <label style={{fontSize:11,fontWeight:600,color:'var(--muted)',display:'block',marginBottom:4}}>Level (optional)</label>
+                <input className="inp" type="number" value={lvIn} onChange={e=>setLvIn(e.target.value)} placeholder="e.g. 20" min="1" max="50" step="0.5"/>
               </div>
             </div>
-            <button onClick={runLookup} disabled={!inputCP||lookupBusy}
-              className="w-full py-2.5 rounded-xl text-sm font-bold transition-all disabled:opacity-40"
-              style={{background:'linear-gradient(135deg,#6366f1,#8b5cf6)'}}>
-              {lookupBusy?'Searching…':'🔍 Find IVs'}
+            <button className="btn primary" onClick={doLookup} disabled={!cpIn||busy} style={{width:'100%',justifyContent:'center',padding:'10px 16px',fontSize:13}}>
+              {busy?'Searching…':'Find IV Combinations'}
             </button>
           </div>
-          {lookupBusy&&<div className="flex justify-center py-6"><LoadingSpinner /></div>}
-          {lookupRes!==null&&!lookupBusy&&(
-            <div className="glass rounded-xl overflow-hidden">
-              {lookupRes.length===0?(
-                <div className="py-8 text-center text-gray-500 text-sm">
-                  No IV combinations produce CP {inputCP}{inputLv?` at level ${inputLv}`:''}.
-                  <br/><span className="text-gray-600 text-xs">Try a different CP or remove the level filter.</span>
+          {busy&&<div style={{display:'flex',justifyContent:'center',padding:24}}><Spinner/></div>}
+          {res!==null&&!busy&&(
+            <div className="card2" style={{overflow:'hidden'}}>
+              {res.length===0?(
+                <div style={{padding:24,textAlign:'center',color:'var(--muted)',fontSize:13}}>
+                  No combinations found for CP {cpIn}{lvIn?` at level ${lvIn}`:''}.
                 </div>
               ):(
                 <>
-                  <div className="px-4 py-2.5 border-b border-white/10 flex items-center justify-between" style={{background:'rgba(255,255,255,0.04)'}}>
-                    <p className="text-white text-sm font-semibold">CP {inputCP} → {lookupRes.length} match{lookupRes.length!==1?'es':''}</p>
-                    <p className="text-gray-500 text-xs">sorted by IV%</p>
+                  <div style={{padding:'10px 14px',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',background:'var(--s3)'}}>
+                    <span style={{fontSize:13,fontWeight:700}}>CP {cpIn} → {res.length} result{res.length!==1?'s':''}</span>
+                    <span style={{fontSize:11,color:'var(--muted)'}}>by IV%</span>
                   </div>
-                  <table className="w-full text-xs">
-                    <thead><tr className="border-b border-white/10" style={{background:'rgba(255,255,255,0.03)'}}>
-                      <th className="px-3 py-2 text-center text-gray-500">Lv</th>
-                      <th className="px-3 py-2 text-center text-gray-500">IV%</th>
-                      <th className="px-3 py-2 text-center text-red-400">ATK</th>
-                      <th className="px-3 py-2 text-center text-blue-400">DEF</th>
-                      <th className="px-3 py-2 text-center text-green-400">HP</th>
-                      <th className="px-3 py-2 text-center text-gray-400">In-game HP</th>
-                    </tr></thead>
-                    <tbody>
-                      {lookupRes.map((r,i)=>{
-                        const c=ivColor(r.ivPct); const hun=r.a===15&&r.d===15&&r.h===15;
-                        return (
-                          <tr key={i} className="border-b hover:bg-white/5 transition-colors"
-                            style={{borderColor:'rgba(255,255,255,0.05)',background:hun?'rgba(251,191,36,0.08)':''}}>
-                            <td className="px-3 py-2 text-center text-gray-300 font-semibold">{r.level}</td>
-                            <td className="px-3 py-2 text-center font-bold" style={{color:c}}>{hun?'⭐':''}{r.ivPct}%</td>
-                            <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:r.a===15?'#f87171':r.a>=13?'#fca5a5':'#9ca3af'}}>{r.a}</td>
-                            <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:r.d===15?'#60a5fa':r.d>=13?'#93c5fd':'#9ca3af'}}>{r.d}</td>
-                            <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:r.h===15?'#34d399':r.h>=13?'#6ee7b7':'#9ca3af'}}>{r.h}</td>
-                            <td className="px-3 py-2 text-center text-green-400">{calcHP(goStats.hp,r.h,r.level)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="overflow-x-auto">
+                    <table className="tbl" style={{fontSize:12}}>
+                      <thead><tr style={{background:'var(--s3)'}}>
+                        {['Lv','IV%','ATK','DEF','HP','HP (in-game)'].map(h=><th key={h} style={{padding:'8px 10px',fontWeight:600,color:'var(--muted)',fontSize:11}}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {res.map((r,i)=>{
+                          const isH=r.a===15&&r.d===15&&r.h===15;
+                          return (<tr key={i} style={{borderTop:'1px solid var(--border)',background:isH?'rgba(251,191,36,.07)':''}}>
+                            <td style={{padding:'7px 10px',fontWeight:600,color:'var(--muted)'}}>{r.lv}</td>
+                            <td style={{padding:'7px 10px',fontWeight:700,color:ivColor(r.pct)}}>{isH?'⭐':''}{r.pct}%</td>
+                            <td style={{padding:'7px 10px',fontWeight:700,color:r.a===15?'#f87171':r.a>=13?'#fca5a5':'var(--muted)'}}>{r.a}</td>
+                            <td style={{padding:'7px 10px',fontWeight:700,color:r.d===15?'#60a5fa':r.d>=13?'#93c5fd':'var(--muted)'}}>{r.d}</td>
+                            <td style={{padding:'7px 10px',fontWeight:700,color:r.h===15?'#4ade80':r.h>=13?'#86efac':'var(--muted)'}}>{r.h}</td>
+                            <td style={{padding:'7px 10px',color:'#4ade80',fontWeight:600}}>{calcHP(gs.hp,r.h,r.lv)}</td>
+                          </tr>);
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </>
               )}
             </div>
@@ -836,388 +822,359 @@ function CPCalculator({ pokemon }) {
   );
 }
 
-// ── RAID IV CHART ─────────────────────────────────────────────────────────
-function RaidIVChart({ pokemon }) {
-  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
-  const types   = pokemon?.types?.map(t=>t.type.name)||[];
-  const weathers = React.useMemo(()=>getWeatherForTypes(types),[types.join(',')]);
-  const [encKey, setEncKey]   = React.useState('raid');
-  const [minCP, setMinCP]     = React.useState('');
-  const [maxCP, setMaxCP]     = React.useState('');
-  const [ivFilter, setIVF]    = React.useState('all');
-  const [sortBy, setSort]     = React.useState('iv');
-  const [showTop, setShowTop] = React.useState(50);
-  const enc = ENCOUNTER_TYPES[encKey];
-  const allRows = React.useMemo(()=>{
-    if(!goStats) return [];
-    const rows=[]; const fl=enc.floor;
-    for(let a=15;a>=fl;a--) for(let d=15;d>=fl;d--) for(let h=15;h>=fl;h--){
-      rows.push({a,d,h,
-        cpN: calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,enc.level),
-        cpB: enc.hasBoosted?calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,enc.boostedLevel):null,
-        hpN: calcHP(goStats.hp,h,enc.level),
-        ivPct: Math.round(((a+d+h)/45)*100),
-      });
-    }
+// ── IV CHART ───────────────────────────────────────────────────────────────
+function IVChart({poke}) {
+  const gs=React.useMemo(()=>poke?goStats(poke):null,[poke]);
+  const [lv,setLv]=React.useState(40);
+  const [minCP,setMinCP]=React.useState('');
+  const [maxCP,setMaxCP]=React.useState('');
+  const [ivf,setIvf]=React.useState('all');
+  const [sort,setSort]=React.useState('iv');
+  const [top,setTop]=React.useState(50);
+  const all=React.useMemo(()=>{
+    if(!gs) return [];
+    const rows=[];
+    for(let a=15;a>=0;a--) for(let d=15;d>=0;d--) for(let h=15;h>=0;h--)
+      rows.push({a,d,h,cp:calcCP(gs.atk,gs.def,gs.hp,a,d,h,lv),hp:calcHP(gs.hp,h,lv),pct:Math.round(((a+d+h)/45)*100)});
     return rows;
-  },[goStats,encKey]);
-  const filtered = React.useMemo(()=>{
-    let r=allRows;
-    const lo=parseInt(minCP)||0, hi=parseInt(maxCP)||Infinity;
-    if(lo||hi<Infinity) r=r.filter(x=>(enc.hasBoosted?[x.cpN,x.cpB]:[x.cpN]).some(v=>v>=lo&&v<=hi));
-    if(ivFilter==='hundo') r=r.filter(x=>x.a===15&&x.d===15&&x.h===15);
-    else if(ivFilter==='lucky') r=r.filter(x=>x.a>=12&&x.d>=12&&x.h>=12);
-    else if(ivFilter==='98')    r=r.filter(x=>x.ivPct>=98);
-    else if(ivFilter==='93')    r=r.filter(x=>x.ivPct>=93);
-    const km={iv:'ivPct',cp:'cpN',atk:'a',def:'d',hp:'h'};
-    r=[...r].sort((a,b)=>b[km[sortBy]||'ivPct']-a[km[sortBy]||'ivPct']);
-    return r.slice(0,showTop);
-  },[allRows,minCP,maxCP,ivFilter,sortBy,showTop]);
-  const ivStyle = p => p===100?{c:'#fbbf24',bg:'rgba(251,191,36,0.15)'}:p>=98?{c:'#34d399',bg:'rgba(52,211,153,0.1)'}:p>=93?{c:'#60a5fa',bg:'rgba(96,165,250,0.1)'}:p>=82?{c:'#818cf8',bg:'rgba(129,140,248,0.08)'}:{c:'#9ca3af',bg:'transparent'};
-  const ivC = (v,fl) => v===15?'#f87171':v>=13?'#fca5a5':v===fl?'#6b7280':'#d1d5db';
-  const hundoN = goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,enc.level):0;
-  const hundoB = goStats&&enc.hasBoosted?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,enc.boostedLevel):0;
-  if(!pokemon) return <div className="py-12 text-center text-gray-600 text-sm">Select a Pokémon</div>;
+  },[gs,lv]);
+  const rows=React.useMemo(()=>{
+    let r=all;
+    const lo=parseInt(minCP)||0,hi=parseInt(maxCP)||Infinity;
+    if(lo||hi<Infinity) r=r.filter(x=>x.cp>=lo&&x.cp<=hi);
+    if(ivf==='hundo') r=r.filter(x=>x.a===15&&x.d===15&&x.h===15);
+    else if(ivf==='lucky') r=r.filter(x=>x.a>=12&&x.d>=12&&x.h>=12);
+    else if(ivf==='98') r=r.filter(x=>x.pct>=98);
+    else if(ivf==='82') r=r.filter(x=>x.pct>=82);
+    const km={iv:'pct',cp:'cp',atk:'a',def:'d',hp:'h'};
+    r=[...r].sort((a,b)=>b[km[sort]||'pct']-a[km[sort]||'pct']);
+    return r.slice(0,top);
+  },[all,minCP,maxCP,ivf,sort,top]);
+  const maxCP50=gs?calcCP(gs.atk,gs.def,gs.hp,15,15,15,50):0;
+  const ivStyle=p=>p===100?'#fbbf24':p>=98?'#4ade80':p>=93?'#60a5fa':p>=82?'#a78bfa':'var(--muted)';
+  const ivBg=p=>p===100?'rgba(251,191,36,.12)':p>=98?'rgba(74,222,128,.08)':p>=93?'rgba(96,165,250,.08)':p>=82?'rgba(167,139,250,.06)':'';
+  if(!poke) return <div style={{padding:'40px 0',textAlign:'center',color:'var(--dim)',fontSize:13}}>Select a Pokémon first</div>;
   return (
-    <div className="animate-slide-up space-y-4">
-      <div className="glass rounded-xl p-4 space-y-2">
-        <p className="text-gray-300 text-xs font-semibold uppercase tracking-widest">Encounter Type</p>
-        <div className="flex flex-wrap gap-2">
-          {Object.entries(ENCOUNTER_TYPES).map(([k,e])=>(
-            <button key={k} onClick={()=>{setEncKey(k);setShowTop(50);}}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${encKey===k?'bg-indigo-600 text-white':'glass text-gray-400 hover:text-white'}`}>{e.label}</button>
+    <div className="slide-up" style={{display:'flex',flexDirection:'column',gap:12}}>
+      <RangeSlider label="Level" value={lv} onChange={setLv} min={1} max={50} step={0.5} color="var(--accent)" showNum/>
+      {/* CP filter */}
+      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+        <input className="inp" type="number" value={minCP} onChange={e=>setMinCP(e.target.value)} placeholder="Min CP" style={{flex:1,minWidth:0,maxWidth:110}}/>
+        <span style={{color:'var(--dim)',fontSize:13}}>–</span>
+        <input className="inp" type="number" value={maxCP} onChange={e=>setMaxCP(e.target.value)} placeholder="Max CP" style={{flex:1,minWidth:0,maxWidth:110}}/>
+        {(minCP||maxCP)&&<button className="btn" style={{padding:'7px 10px',fontSize:12}} onClick={()=>{setMinCP('');setMaxCP('');}}>✕</button>}
+        <span style={{fontSize:11,color:'var(--dim)',marginLeft:'auto'}}>Max: {maxCP50.toLocaleString()}</span>
+      </div>
+      {/* IV filter pills */}
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        {[['All','all','var(--muted)'],['⭐ Hundo','hundo','#fbbf24'],['Lucky (12+)','lucky','#4ade80'],['≥98%','98','#60a5fa'],['≥82%','82','#a78bfa']].map(([l,v,c])=>(
+          <button key={v} onClick={()=>setIvf(v)} style={{padding:'4px 11px',borderRadius:20,fontSize:12,fontWeight:600,fontFamily:'inherit',cursor:'pointer',border:`1px solid ${ivf===v?c:'var(--border2)'}`,background:ivf===v?c+'22':'transparent',color:ivf===v?c:'var(--muted)',transition:'all .15s'}}>{l}</button>
+        ))}
+      </div>
+      {/* Sort */}
+      <div style={{display:'flex',alignItems:'center',gap:6,flexWrap:'wrap'}}>
+        <span style={{fontSize:11,color:'var(--dim)'}}>Sort by</span>
+        {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v])=>(
+          <button key={v} className={`btn${sort===v?' active-blue':''}`} style={{padding:'4px 10px',fontSize:11}} onClick={()=>setSort(v)}>{l}</button>
+        ))}
+        <span style={{fontSize:11,color:'var(--dim)',marginLeft:'auto'}}>{rows.length} of {all.length.toLocaleString()}</span>
+      </div>
+      {/* Table */}
+      <div className="card2" style={{overflow:'hidden'}}>
+        <div className="overflow-x-auto">
+          <table className="tbl" style={{fontSize:12,minWidth:300}}>
+            <thead><tr style={{background:'var(--s3)'}}>
+              {['#','IV%','ATK','DEF','HP','CP','HP'].map(h=><th key={h} style={{padding:'8px 10px',fontWeight:600,color:'var(--muted)',fontSize:11}}>{h}</th>)}
+            </tr></thead>
+            <tbody>
+              {rows.map((row,i)=>{
+                const isH=row.a===15&&row.d===15&&row.h===15;
+                return (<tr key={`${row.a}-${row.d}-${row.h}`} style={{borderTop:'1px solid var(--border)',background:ivBg(row.pct)}}>
+                  <td style={{padding:'6px 10px',color:'var(--dim)'}}>{i+1}</td>
+                  <td style={{padding:'6px 10px',fontWeight:700,color:ivStyle(row.pct)}}>{isH?'⭐':''}{row.pct}%</td>
+                  <td style={{padding:'6px 10px',fontWeight:700,color:row.a===15?'#f87171':row.a>=13?'#fca5a5':'var(--muted)'}}>{row.a}</td>
+                  <td style={{padding:'6px 10px',fontWeight:700,color:row.d===15?'#60a5fa':row.d>=13?'#93c5fd':'var(--muted)'}}>{row.d}</td>
+                  <td style={{padding:'6px 10px',fontWeight:700,color:row.h===15?'#4ade80':row.h>=13?'#86efac':'var(--muted)'}}>{row.h}</td>
+                  <td style={{padding:'6px 10px',fontWeight:700,color:'var(--text)'}}>{row.cp.toLocaleString()}</td>
+                  <td style={{padding:'6px 10px',color:'#4ade80',fontWeight:600}}>{row.hp}</td>
+                </tr>);
+              })}
+            </tbody>
+          </table>
+          {rows.length===0&&<div style={{padding:24,textAlign:'center',color:'var(--dim)',fontSize:13}}>No results</div>}
+        </div>
+      </div>
+      {top<all.length&&<button className="btn" style={{width:'100%',justifyContent:'center',padding:'9px',fontSize:13}} onClick={()=>setTop(t=>t+100)}>Show more ({all.length-top} remaining)</button>}
+    </div>
+  );
+}
+
+// ── RAID IV CHART ──────────────────────────────────────────────────────────
+function RaidIVChart({poke}) {
+  const gs=React.useMemo(()=>poke?goStats(poke):null,[poke]);
+  const types=poke?.types?.map(t=>t.type.name)||[];
+  const weathers=React.useMemo(()=>weatherForTypes(types),[types.join(',')]);
+  const [encKey,setEncKey]=React.useState('raid');
+  const [minCP,setMinCP]=React.useState('');
+  const [maxCP,setMaxCP]=React.useState('');
+  const [ivf,setIvf]=React.useState('all');
+  const [sort,setSort]=React.useState('iv');
+  const [top,setTop]=React.useState(50);
+  const enc=ENC[encKey];
+  const all=React.useMemo(()=>{
+    if(!gs) return [];
+    const rows=[];
+    for(let a=15;a>=enc.fl;a--) for(let d=15;d>=enc.fl;d--) for(let h=15;h>=enc.fl;h--)
+      rows.push({a,d,h,cpN:calcCP(gs.atk,gs.def,gs.hp,a,d,h,enc.lv),cpB:enc.boosted?calcCP(gs.atk,gs.def,gs.hp,a,d,h,enc.blv):null,hpN:calcHP(gs.hp,h,enc.lv),pct:Math.round(((a+d+h)/45)*100)});
+    return rows;
+  },[gs,encKey]);
+  const rows=React.useMemo(()=>{
+    let r=all;
+    const lo=parseInt(minCP)||0,hi=parseInt(maxCP)||Infinity;
+    if(lo||hi<Infinity) r=r.filter(x=>(enc.boosted?[x.cpN,x.cpB]:[x.cpN]).some(v=>v>=lo&&v<=hi));
+    if(ivf==='hundo') r=r.filter(x=>x.a===15&&x.d===15&&x.h===15);
+    else if(ivf==='lucky') r=r.filter(x=>x.a>=12&&x.d>=12&&x.h>=12);
+    else if(ivf==='98') r=r.filter(x=>x.pct>=98);
+    const km={iv:'pct',cp:'cpN',atk:'a',def:'d',hp:'h'};
+    r=[...r].sort((a,b)=>b[km[sort]||'pct']-a[km[sort]||'pct']);
+    return r.slice(0,top);
+  },[all,minCP,maxCP,ivf,sort,top]);
+  const ivStyle=p=>p===100?'#fbbf24':p>=98?'#4ade80':p>=93?'#60a5fa':p>=82?'#a78bfa':'var(--muted)';
+  const ivBg=p=>p===100?'rgba(251,191,36,.12)':p>=98?'rgba(74,222,128,.08)':p>=93?'rgba(96,165,250,.08)':p>=82?'rgba(167,139,250,.06)':'';
+  const hundoN=gs?calcCP(gs.atk,gs.def,gs.hp,15,15,15,enc.lv):0;
+  const hundoB=gs&&enc.boosted?calcCP(gs.atk,gs.def,gs.hp,15,15,15,enc.blv):0;
+  if(!poke) return <div style={{padding:'40px 0',textAlign:'center',color:'var(--dim)',fontSize:13}}>Select a Pokémon first</div>;
+  return (
+    <div className="slide-up" style={{display:'flex',flexDirection:'column',gap:12}}>
+      {/* Encounter type */}
+      <div className="card2" style={{padding:'12px 14px'}}>
+        <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--muted)',marginBottom:8}}>Encounter Type</div>
+        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+          {Object.entries(ENC).map(([k,e])=>(
+            <button key={k} className={`btn${encKey===k?' active-blue':''}`} style={{padding:'5px 12px',fontSize:12}} onClick={()=>{setEncKey(k);setTop(50);}}>{e.label}</button>
           ))}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="glass rounded-xl p-3 text-center" style={{border:'1px solid rgba(251,191,36,0.3)',background:'rgba(251,191,36,0.07)'}}>
-          <p className="text-yellow-400 text-xs font-semibold">⭐ Hundo (Lv{enc.level})</p>
-          <p className="text-white font-black text-xl">{hundoN.toLocaleString()}</p>
-          <p className="text-gray-500 text-xs">15/15/15</p>
+      {/* Hundo reference */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+        <div className="card2" style={{padding:'12px',textAlign:'center',borderColor:'rgba(251,191,36,.25)'}}>
+          <div style={{fontSize:10,fontWeight:700,color:'#fbbf24',marginBottom:4}}>⭐ Hundo · Lv{enc.lv}</div>
+          <div style={{fontSize:20,fontWeight:800}}>{hundoN.toLocaleString()}</div>
+          <div style={{fontSize:10,color:'var(--dim)',marginTop:2}}>15/15/15</div>
         </div>
-        {enc.hasBoosted?(
-          <div className="glass rounded-xl p-3 text-center" style={{border:'1px solid rgba(99,102,241,0.3)',background:'rgba(99,102,241,0.07)'}}>
-            <p className="text-indigo-400 text-xs font-semibold">🌤️ Boosted Hundo (Lv{enc.boostedLevel})</p>
-            <p className="text-white font-black text-xl">{hundoB.toLocaleString()}</p>
-            {weathers.length>0&&<p className="text-gray-500 text-xs truncate">{weathers.join(' / ')}</p>}
+        {enc.boosted?(
+          <div className="card2" style={{padding:'12px',textAlign:'center',borderColor:'rgba(91,94,244,.3)'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'var(--accent-light)',marginBottom:4}}>🌤 Boosted · Lv{enc.blv}</div>
+            <div style={{fontSize:20,fontWeight:800}}>{hundoB.toLocaleString()}</div>
+            {weathers.length>0&&<div style={{fontSize:10,color:'var(--dim)',marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{weathers.join(' · ')}</div>}
           </div>
         ):(
-          <div className="glass rounded-xl p-3 text-center">
-            <p className="text-gray-500 text-xs font-semibold">IV Floor</p>
-            <p className="text-white font-black text-xl">{enc.floor}/{enc.floor}/{enc.floor}</p>
-            <p className="text-gray-600 text-xs">Catch Lv{enc.level}</p>
+          <div className="card2" style={{padding:'12px',textAlign:'center'}}>
+            <div style={{fontSize:10,fontWeight:700,color:'var(--muted)',marginBottom:4}}>IV Floor</div>
+            <div style={{fontSize:20,fontWeight:800}}>{enc.fl}/{enc.fl}/{enc.fl}</div>
+            <div style={{fontSize:10,color:'var(--dim)',marginTop:2}}>Catch Lv{enc.lv}</div>
           </div>
         )}
       </div>
-      {enc.hasBoosted&&weathers.length>0&&(
-        <div className="glass rounded-xl p-3" style={{border:'1px solid rgba(56,189,248,0.2)',background:'rgba(56,189,248,0.05)'}}>
-          <p className="text-sky-400 text-xs font-semibold mb-1">Weather Boost Active When:</p>
-          <div className="flex flex-wrap gap-2">{weathers.map((w,i)=><span key={i} className="text-xs text-sky-300 bg-sky-500/10 border border-sky-500/20 px-2.5 py-1 rounded-lg">{w}</span>)}</div>
+      {enc.boosted&&weathers.length>0&&(
+        <div className="card3" style={{padding:'10px 12px',borderColor:'rgba(56,189,248,.2)',background:'rgba(56,189,248,.05)'}}>
+          <div style={{fontSize:11,fontWeight:600,color:'#38bdf8',marginBottom:6}}>Weather boost active:</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:5}}>
+            {weathers.map((w,i)=><span key={i} style={{fontSize:11,color:'#7dd3fc',background:'rgba(56,189,248,.1)',padding:'3px 8px',borderRadius:8}}>{w}</span>)}
+          </div>
         </div>
       )}
-      <div className="glass rounded-xl p-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-400">
-        <span>🔒 IV Floor: <strong className="text-white">{enc.floor}/{enc.floor}/{enc.floor}</strong></span>
-        <span>📊 Catch Level: <strong className="text-white">{enc.level}{enc.hasBoosted?` / ${enc.boostedLevel} (boosted)`:''}</strong></span>
-        <span>🎲 Combos: <strong className="text-white">{allRows.length.toLocaleString()}</strong></span>
+      <div style={{fontSize:11,color:'var(--dim)',display:'flex',gap:12,flexWrap:'wrap'}}>
+        <span>Floor: <strong style={{color:'var(--text)'}}>{enc.fl}/{enc.fl}/{enc.fl}</strong></span>
+        <span>Level: <strong style={{color:'var(--text)'}}>{enc.lv}{enc.boosted?` / ${enc.blv} boosted`:''}</strong></span>
+        <span>{all.length.toLocaleString()} combos</span>
       </div>
-      <div className="space-y-2">
-        <div className="flex gap-2 items-center flex-wrap">
-          <input type="number" value={minCP} onChange={e=>setMinCP(e.target.value)} placeholder="Min CP"
-            className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-          <span className="text-gray-600">–</span>
-          <input type="number" value={maxCP} onChange={e=>setMaxCP(e.target.value)} placeholder="Max CP"
-            className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-          {(minCP||maxCP)&&<button onClick={()=>{setMinCP('');setMaxCP('');}} className="px-2 py-1.5 glass rounded-lg text-gray-500 hover:text-white text-xs transition-colors">✕</button>}
-          <span className="ml-auto text-gray-600 text-xs">{filtered.length} results</span>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {[['All','all','#6b7280'],['⭐ Hundo','hundo','#fbbf24'],['Lucky (12+)','lucky','#34d399'],['≥98%','98','#60a5fa'],['≥93%','93','#818cf8']].map(([l,v,c])=>(
-            <button key={v} onClick={()=>setIVF(v)}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
-              style={ivFilter===v?{background:c+'33',color:c,border:`1px solid ${c}55`}:{background:'rgba(255,255,255,0.05)',color:'#6b7280',border:'1px solid rgba(255,255,255,0.1)'}}>
-              {l}
-            </button>
-          ))}
-        </div>
-        <div className="flex gap-1.5 items-center">
-          <span className="text-gray-600 text-xs">Sort:</span>
-          {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v])=>(
-            <button key={v} onClick={()=>setSort(v)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${sortBy===v?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>{l}</button>
-          ))}
-        </div>
+      {/* Filters */}
+      <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
+        <input className="inp" type="number" value={minCP} onChange={e=>setMinCP(e.target.value)} placeholder="Min CP" style={{flex:1,minWidth:0,maxWidth:110}}/>
+        <span style={{color:'var(--dim)'}}>–</span>
+        <input className="inp" type="number" value={maxCP} onChange={e=>setMaxCP(e.target.value)} placeholder="Max CP" style={{flex:1,minWidth:0,maxWidth:110}}/>
+        {(minCP||maxCP)&&<button className="btn" style={{padding:'7px 10px',fontSize:12}} onClick={()=>{setMinCP('');setMaxCP('');}}>✕</button>}
+        <span style={{fontSize:11,color:'var(--dim)',marginLeft:'auto'}}>{rows.length} results</span>
       </div>
-      <div className="glass rounded-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead><tr className="border-b border-white/10" style={{background:'rgba(255,255,255,0.04)'}}>
-              <th className="px-2 py-2.5 text-left text-gray-500">#</th>
-              <th className="px-2 py-2.5 text-center text-gray-400">IV%</th>
-              <th className="px-2 py-2.5 text-center text-red-400">ATK</th>
-              <th className="px-2 py-2.5 text-center text-blue-400">DEF</th>
-              <th className="px-2 py-2.5 text-center text-green-400">HP</th>
-              <th className="px-2 py-2.5 text-center text-white">CP (Lv{enc.level})</th>
-              {enc.hasBoosted&&<th className="px-2 py-2.5 text-center text-indigo-400">CP (Lv{enc.boostedLevel} 🌤️)</th>}
-              <th className="px-2 py-2.5 text-center text-green-400">HP</th>
-            </tr></thead>
-            <tbody>
-              {filtered.map((row,i)=>{
-                const {c,bg}=ivStyle(row.ivPct); const hun=row.a===15&&row.d===15&&row.h===15;
-                return (
-                  <tr key={`${row.a}-${row.d}-${row.h}`} className="border-b hover:bg-white/5 transition-colors"
-                    style={{borderColor:'rgba(255,255,255,0.05)',background:bg}}>
-                    <td className="px-2 py-2 text-gray-600">{i+1}</td>
-                    <td className="px-2 py-2 text-center font-bold" style={{color:c}}>{hun?'⭐':''}{row.ivPct}%</td>
-                    <td className="px-2 py-2 text-center font-mono font-semibold" style={{color:ivC(row.a,enc.floor)}}>{row.a}</td>
-                    <td className="px-2 py-2 text-center font-mono font-semibold" style={{color:ivC(row.d,enc.floor)}}>{row.d}</td>
-                    <td className="px-2 py-2 text-center font-mono font-semibold" style={{color:ivC(row.h,enc.floor)}}>{row.h}</td>
-                    <td className="px-2 py-2 text-center font-bold text-white">{row.cpN.toLocaleString()}</td>
-                    {enc.hasBoosted&&<td className="px-2 py-2 text-center font-bold text-indigo-300">{row.cpB?.toLocaleString()}</td>}
-                    <td className="px-2 py-2 text-center text-green-400">{row.hpN}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {filtered.length===0&&<div className="py-10 text-center text-gray-600 text-sm">No results match your filters</div>}
-        </div>
-      </div>
-      {showTop<allRows.length&&<button onClick={()=>setShowTop(t=>t+100)}
-        className="w-full py-2.5 glass rounded-xl text-gray-400 hover:text-white text-sm transition-colors hover:bg-white/10">
-        Show more ({allRows.length-showTop} remaining)</button>}
-    </div>
-  );
-}
-
-// ── IV CHART ──────────────────────────────────────────────────────────────
-function IVChart({ pokemon }) {
-  const goStats = React.useMemo(()=>pokemon?getGoStats(pokemon):null,[pokemon]);
-  const [level, setLevel]     = React.useState(40);
-  const [minCP, setMinCP]     = React.useState('');
-  const [maxCP, setMaxCP]     = React.useState('');
-  const [ivFilter, setIVF]    = React.useState('all');
-  const [sortBy, setSort]     = React.useState('iv');
-  const [showTop, setShowTop] = React.useState(50);
-  const allRows = React.useMemo(()=>{
-    if(!goStats) return [];
-    const rows=[];
-    for(let a=15;a>=0;a--) for(let d=15;d>=0;d--) for(let h=15;h>=0;h--)
-      rows.push({a,d,h,cp:calcCP(goStats.attack,goStats.defense,goStats.hp,a,d,h,level),hp:calcHP(goStats.hp,h,level),ivPct:Math.round(((a+d+h)/45)*100)});
-    return rows;
-  },[goStats,level]);
-  const filtered = React.useMemo(()=>{
-    let r=allRows;
-    const lo=parseInt(minCP)||0, hi=parseInt(maxCP)||Infinity;
-    if(lo||hi<Infinity) r=r.filter(x=>x.cp>=lo&&x.cp<=hi);
-    if(ivFilter==='hundo') r=r.filter(x=>x.a===15&&x.d===15&&x.h===15);
-    else if(ivFilter==='lucky') r=r.filter(x=>x.a>=12&&x.d>=12&&x.h>=12);
-    else if(ivFilter==='98')    r=r.filter(x=>x.ivPct>=98);
-    else if(ivFilter==='82')    r=r.filter(x=>x.ivPct>=82);
-    const km={iv:'ivPct',cp:'cp',atk:'a',def:'d',hp:'h'};
-    r=[...r].sort((a,b)=>b[km[sortBy]||'ivPct']-a[km[sortBy]||'ivPct']);
-    return r.slice(0,showTop);
-  },[allRows,minCP,maxCP,ivFilter,sortBy,showTop]);
-  const ivStyle = p => p===100?{c:'#fbbf24',bg:'rgba(251,191,36,0.15)'}:p>=98?{c:'#34d399',bg:'rgba(52,211,153,0.1)'}:p>=93?{c:'#60a5fa',bg:'rgba(96,165,250,0.1)'}:p>=82?{c:'#818cf8',bg:'rgba(129,140,248,0.08)'}:{c:'#9ca3af',bg:'transparent'};
-  const maxCP50 = goStats?calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,50):0;
-  if(!pokemon) return <div className="py-12 text-center text-gray-600 text-sm">Select a Pokémon</div>;
-  return (
-    <div className="animate-slide-up space-y-4">
-      <Slider label="Level" value={level} onChange={setLevel} min={1} max={50} step={0.5} color="#6366f1" showInput={true} />
-      <div className="flex gap-2 items-center flex-wrap">
-        <input type="number" value={minCP} onChange={e=>setMinCP(e.target.value)} placeholder="Min CP"
-          className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-        <span className="text-gray-600">–</span>
-        <input type="number" value={maxCP} onChange={e=>setMaxCP(e.target.value)} placeholder="Max CP"
-          className="w-28 bg-white/10 border border-white/20 rounded-lg px-3 py-1.5 text-white text-xs placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
-        {(minCP||maxCP)&&<button onClick={()=>{setMinCP('');setMaxCP('');}} className="px-2 py-1.5 glass rounded-lg text-gray-500 hover:text-white text-xs">✕</button>}
-        <span className="ml-auto text-gray-600 text-xs">Max CP: {maxCP50.toLocaleString()}</span>
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {[['All','all','#6b7280'],['⭐ Hundo','hundo','#fbbf24'],['Lucky (12+)','lucky','#34d399'],['≥98%','98','#60a5fa'],['≥82%','82','#818cf8']].map(([l,v,c])=>(
-          <button key={v} onClick={()=>setIVF(v)}
-            className="px-2.5 py-1 rounded-lg text-xs font-semibold transition-all"
-            style={ivFilter===v?{background:c+'33',color:c,border:`1px solid ${c}55`}:{background:'rgba(255,255,255,0.05)',color:'#6b7280',border:'1px solid rgba(255,255,255,0.1)'}}>
-            {l}
-          </button>
+      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+        {[['All','all','var(--muted)'],['⭐ Hundo','hundo','#fbbf24'],['Lucky (12+)','lucky','#4ade80'],['≥98%','98','#60a5fa']].map(([l,v,c])=>(
+          <button key={v} onClick={()=>setIvf(v)} style={{padding:'4px 11px',borderRadius:20,fontSize:12,fontWeight:600,fontFamily:'inherit',cursor:'pointer',border:`1px solid ${ivf===v?c:'var(--border2)'}`,background:ivf===v?c+'22':'transparent',color:ivf===v?c:'var(--muted)',transition:'all .15s'}}>{l}</button>
         ))}
       </div>
-      <div className="flex gap-1.5 items-center flex-wrap">
-        <span className="text-gray-600 text-xs">Sort:</span>
+      <div style={{display:'flex',gap:6,alignItems:'center',flexWrap:'wrap'}}>
+        <span style={{fontSize:11,color:'var(--dim)'}}>Sort</span>
         {[['IV%','iv'],['CP','cp'],['ATK','atk'],['DEF','def'],['HP','hp']].map(([l,v])=>(
-          <button key={v} onClick={()=>setSort(v)}
-            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${sortBy===v?'bg-indigo-600 text-white':'glass text-gray-500 hover:text-white'}`}>{l}</button>
-        ))}
-        <span className="ml-auto text-gray-600 text-xs">{filtered.length} / {allRows.length.toLocaleString()}</span>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {[['100% Hundo','#fbbf24'],['98%+','#34d399'],['93%+','#60a5fa'],['82%+','#818cf8'],['Lower','#6b7280']].map(([l,c])=>(
-          <div key={l} className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-sm" style={{background:c+'55',border:`1px solid ${c}`}}/><span className="text-gray-500 text-xs">{l}</span></div>
+          <button key={v} className={`btn${sort===v?' active-blue':''}`} style={{padding:'4px 10px',fontSize:11}} onClick={()=>setSort(v)}>{l}</button>
         ))}
       </div>
-      <div className="glass rounded-xl overflow-hidden">
+      {/* Table */}
+      <div className="card2" style={{overflow:'hidden'}}>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead><tr className="border-b border-white/10" style={{background:'rgba(255,255,255,0.04)'}}>
-              <th className="px-3 py-2.5 text-left text-gray-500 w-8">#</th>
-              <th className="px-3 py-2.5 text-center text-gray-400">IV%</th>
-              <th className="px-3 py-2.5 text-center text-red-400">ATK</th>
-              <th className="px-3 py-2.5 text-center text-blue-400">DEF</th>
-              <th className="px-3 py-2.5 text-center text-green-400">HP</th>
-              <th className="px-3 py-2.5 text-center text-white">CP</th>
-              <th className="px-3 py-2.5 text-center text-green-400">HP</th>
+          <table className="tbl" style={{fontSize:12,minWidth:enc.boosted?360:300}}>
+            <thead><tr style={{background:'var(--s3)'}}>
+              <th style={{padding:'8px 8px',fontWeight:600,color:'var(--muted)',fontSize:11}}>#</th>
+              <th style={{padding:'8px 8px',fontWeight:600,color:'var(--muted)',fontSize:11}}>IV%</th>
+              <th style={{padding:'8px 8px',fontWeight:600,color:'#f87171',fontSize:11}}>ATK</th>
+              <th style={{padding:'8px 8px',fontWeight:600,color:'#60a5fa',fontSize:11}}>DEF</th>
+              <th style={{padding:'8px 8px',fontWeight:600,color:'#4ade80',fontSize:11}}>HP</th>
+              <th style={{padding:'8px 8px',fontWeight:600,color:'var(--text)',fontSize:11}}>CP (Lv{enc.lv})</th>
+              {enc.boosted&&<th style={{padding:'8px 8px',fontWeight:600,color:'var(--accent-light)',fontSize:11}}>CP (Lv{enc.blv} 🌤)</th>}
+              <th style={{padding:'8px 8px',fontWeight:600,color:'#4ade80',fontSize:11}}>HP</th>
             </tr></thead>
             <tbody>
-              {filtered.map((row,i)=>{
-                const {c,bg}=ivStyle(row.ivPct); const hun=row.a===15&&row.d===15&&row.h===15;
-                return (
-                  <tr key={`${row.a}-${row.d}-${row.h}`} className="border-b hover:bg-white/5 transition-colors"
-                    style={{borderColor:'rgba(255,255,255,0.05)',background:bg}}>
-                    <td className="px-3 py-2 text-gray-600">{i+1}</td>
-                    <td className="px-3 py-2 text-center font-bold" style={{color:c}}>{hun?'⭐':''}{row.ivPct}%</td>
-                    <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:row.a===15?'#f87171':row.a>=13?'#fca5a5':'#9ca3af'}}>{row.a}</td>
-                    <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:row.d===15?'#60a5fa':row.d>=13?'#93c5fd':'#9ca3af'}}>{row.d}</td>
-                    <td className="px-3 py-2 text-center font-mono font-semibold" style={{color:row.h===15?'#34d399':row.h>=13?'#6ee7b7':'#9ca3af'}}>{row.h}</td>
-                    <td className="px-3 py-2 text-center font-bold text-white">{row.cp.toLocaleString()}</td>
-                    <td className="px-3 py-2 text-center text-green-400">{row.hp}</td>
-                  </tr>
-                );
-              })}
+              {rows.map((row,i)=>(
+                <tr key={`${row.a}-${row.d}-${row.h}`} style={{borderTop:'1px solid var(--border)',background:ivBg(row.pct)}}>
+                  <td style={{padding:'6px 8px',color:'var(--dim)'}}>{i+1}</td>
+                  <td style={{padding:'6px 8px',fontWeight:700,color:ivStyle(row.pct)}}>{row.a===15&&row.d===15&&row.h===15?'⭐':''}{row.pct}%</td>
+                  <td style={{padding:'6px 8px',fontWeight:700,color:row.a===15?'#f87171':row.a>=13?'#fca5a5':'var(--muted)'}}>{row.a}</td>
+                  <td style={{padding:'6px 8px',fontWeight:700,color:row.d===15?'#60a5fa':row.d>=13?'#93c5fd':'var(--muted)'}}>{row.d}</td>
+                  <td style={{padding:'6px 8px',fontWeight:700,color:row.h===15?'#4ade80':row.h>=13?'#86efac':'var(--muted)'}}>{row.h}</td>
+                  <td style={{padding:'6px 8px',fontWeight:700,color:'var(--text)'}}>{row.cpN.toLocaleString()}</td>
+                  {enc.boosted&&<td style={{padding:'6px 8px',fontWeight:700,color:'var(--accent-light)'}}>{row.cpB?.toLocaleString()}</td>}
+                  <td style={{padding:'6px 8px',color:'#4ade80',fontWeight:600}}>{row.hpN}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
-          {filtered.length===0&&<div className="py-10 text-center text-gray-600 text-sm">No results match your filters</div>}
+          {rows.length===0&&<div style={{padding:24,textAlign:'center',color:'var(--dim)',fontSize:13}}>No results</div>}
         </div>
       </div>
-      {showTop<allRows.length&&<button onClick={()=>setShowTop(t=>t+100)}
-        className="w-full py-2.5 glass rounded-xl text-gray-400 hover:text-white text-sm transition-colors hover:bg-white/10">
-        Show more ({allRows.length-showTop} remaining)</button>}
+      {top<all.length&&<button className="btn" style={{width:'100%',justifyContent:'center',padding:'9px',fontSize:13}} onClick={()=>setTop(t=>t+100)}>Show more ({all.length-top} remaining)</button>}
     </div>
   );
 }
 
-// ── RAID COUNTERS ─────────────────────────────────────────────────────────
-function CounterCard({ attacker, rank }) {
-  const [poke, setPoke] = React.useState(null);
-  React.useEffect(()=>{ fetchPokemon(attacker.name).then(setPoke).catch(()=>{}); },[attacker.name]);
-  const effLabel = attacker.eff>=3.9?'4×':attacker.eff>=2.5?'2.56×':attacker.eff>=1.95?'2×':'1.6×';
-  const effColor = attacker.eff>=3.9?'#f87171':attacker.eff>=2.5?'#fb923c':attacker.eff>=1.95?'#fbbf24':'#a3e635';
-  const sprite   = poke?.sprites?.other?.home?.front_default || poke?.sprites?.front_default || '';
+// ── RAID COUNTERS ──────────────────────────────────────────────────────────
+function CounterRow({c,rank}) {
+  const [poke,setPoke]=React.useState(null);
+  React.useEffect(()=>{fetchPoke(c.name).then(setPoke).catch(()=>{}); },[c.name]);
+  const eff=c.eff>=3.9?'4×':c.eff>=2.5?'2.56×':c.eff>=1.95?'2×':'1.6×';
+  const effC=c.eff>=3.9?'#f87171':c.eff>=2.5?'#fb923c':c.eff>=1.95?'#fbbf24':'#a3e635';
+  const sp=poke?.sprites?.other?.home?.front_default||poke?.sprites?.front_default||'';
   return (
-    <div className="glass rounded-xl p-3 flex items-center gap-3 animate-fade-in">
-      <span className="text-gray-600 text-xs font-bold w-5 text-right shrink-0">#{rank}</span>
-      <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
-        {poke ? (
-          <img src={sprite} width="56" height="56" className="object-contain pokemon-img" alt={attacker.name}
-            style={{filter:'drop-shadow(0 2px 8px rgba(0,0,0,0.5))'}} />
-        ) : <LoadingSpinner size="sm" />}
+    <div className="card3 fade-in" style={{padding:'10px 12px',display:'flex',alignItems:'center',gap:10}}>
+      <span style={{fontSize:11,color:'var(--dim)',width:18,textAlign:'right',flexShrink:0}}>#{rank}</span>
+      <div style={{width:40,height:40,flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
+        {poke?<img src={sp} width="40" height="40" style={{objectFit:'contain',filter:'drop-shadow(0 2px 6px rgba(0,0,0,.5))'}} alt={c.name}/>:<Spinner size="sm"/>}
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-white font-bold text-sm truncate">{formatDisplayName(attacker.name)}</p>
-        <div className="flex gap-1 mt-0.5 flex-wrap">{attacker.types.map(t=><TypeBadge key={t} type={t} />)}</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontSize:13,fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fmtName(c.name)}</div>
+        <div style={{display:'flex',gap:4,marginTop:3,flexWrap:'wrap'}}>
+          {c.types.map(t=><TypeBadge key={t} type={t}/>)}
+        </div>
       </div>
-      <div className="text-right shrink-0">
-        <p className="text-xs font-bold mb-1" style={{color:effColor}}>{effLabel}</p>
-        <TypeBadge type={attacker.bestMoveType} />
+      <div style={{textAlign:'right',flexShrink:0}}>
+        <div style={{fontSize:13,fontWeight:800,color:effC,marginBottom:3}}>{eff}</div>
+        <TypeBadge type={c.bestMoveType}/>
       </div>
     </div>
   );
 }
 
-function RaidCounters({ pokemon }) {
-  const types    = pokemon?.types?.map(t=>t.type.name)||[];
-  const counters = React.useMemo(()=>scoredCounters(types),[types.join(',')]);
-  if (!pokemon) return null;
+function RaidCounters({poke}) {
+  const types=poke?.types?.map(t=>t.type.name)||[];
+  const counters=React.useMemo(()=>scoredCounters(types),[types.join(',')]);
+  if(!poke) return null;
   return (
-    <div className="animate-slide-up space-y-4">
-      <div className="glass rounded-xl p-3" style={{background:'rgba(99,102,241,0.08)',border:'1px solid rgba(99,102,241,0.2)'}}>
-        <p className="text-gray-400 text-xs mb-1.5">Defending types</p>
-        <div className="flex gap-1.5 flex-wrap">{types.map(t=><TypeBadge key={t} type={t} size="lg" />)}</div>
+    <div className="slide-up" style={{display:'flex',flexDirection:'column',gap:12}}>
+      <div className="card3" style={{padding:'12px 14px',borderColor:'rgba(91,94,244,.25)'}}>
+        <div style={{fontSize:11,color:'var(--muted)',marginBottom:6,fontWeight:500}}>Defending types</div>
+        <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+          {types.map(t=><TypeBadge key={t} type={t} lg/>)}
+        </div>
       </div>
-      <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold">Top 10 Counters</p>
-      <div className="space-y-2">
+      <div style={{fontSize:12,fontWeight:700,textTransform:'uppercase',letterSpacing:'.06em',color:'var(--muted)'}}>Top {counters.length} Counters</div>
+      <div style={{display:'flex',flexDirection:'column',gap:6}}>
         {counters.length===0
-          ? <p className="text-gray-600 text-sm text-center py-6">No strong counters found.</p>
-          : counters.map((c,i)=><CounterCard key={c.name} attacker={c} rank={i+1} />)}
+          ?<div style={{padding:24,textAlign:'center',color:'var(--dim)',fontSize:13}}>No strong counters found.</div>
+          :counters.map((c,i)=><CounterRow key={c.name} c={c} rank={i+1}/>)}
       </div>
-      <div className="flex flex-wrap gap-2 text-xs">
+      <div style={{display:'flex',flexWrap:'wrap',gap:8,marginTop:4}}>
         {[['4×','#f87171'],['2.56×','#fb923c'],['2×','#fbbf24'],['1.6×','#a3e635']].map(([l,c])=>(
-          <div key={l} className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-sm" style={{background:c+'66',border:`1px solid ${c}`}} />
-            <span className="text-gray-500">{l} effectiveness</span>
+          <div key={l} style={{display:'flex',alignItems:'center',gap:5,fontSize:11,color:'var(--muted)'}}>
+            <div style={{width:10,height:10,borderRadius:3,background:c+'55',border:`1px solid ${c}`}}/>
+            {l}
           </div>
         ))}
       </div>
-      <p className="text-gray-700 text-xs text-center">Based on type effectiveness of best STAB move type.</p>
+      <p style={{fontSize:11,color:'var(--dim)'}}>Based on type effectiveness of best STAB move type.</p>
     </div>
   );
 }
 
-// ── EVOLUTION CHAIN ───────────────────────────────────────────────────────
-function EvoNode({ name, isShiny, is3D, onSelect, isActive }) {
-  const [poke, setPoke] = React.useState(null);
-  React.useEffect(()=>{ fetchPokemon(name).then(setPoke).catch(()=>{}); },[name]);
+// ── EVOLUTION CHAIN ────────────────────────────────────────────────────────
+function EvoNode({name,isShiny,is3D,onSelect,isActive}) {
+  const [poke,setPoke]=React.useState(null);
+  React.useEffect(()=>{fetchPoke(name).then(setPoke).catch(()=>{}); },[name]);
   return (
     <button onClick={()=>onSelect(name)}
-      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 hover:bg-white/10 ${isActive?'bg-white/15 ring-2 ring-indigo-500':''}`}>
-      {poke ? <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={64} />
-             : <div className="w-16 h-16 flex items-center justify-center"><LoadingSpinner size="sm" /></div>}
-      <span className="text-gray-300 text-xs font-medium">{capitalize(name)}</span>
-      {poke&&<span className="text-gray-600 text-xs">#{padId(poke.id)}</span>}
+      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:4,padding:'8px 6px',borderRadius:10,border:`1px solid ${isActive?'var(--accent)':'transparent'}`,background:isActive?'rgba(91,94,244,.1)':'transparent',cursor:'pointer',transition:'all .15s',minWidth:64}}
+      onMouseEnter={e=>!isActive&&(e.currentTarget.style.background='var(--s2)')}
+      onMouseLeave={e=>!isActive&&(e.currentTarget.style.background='transparent')}>
+      {poke?<PokemonImage poke={poke} isShiny={isShiny} is3D={is3D} size={56}/>
+           :<div style={{width:56,height:56,display:'flex',alignItems:'center',justifyContent:'center'}}><Spinner size="sm"/></div>}
+      <span style={{fontSize:11,fontWeight:500,color:'var(--text)',maxWidth:68,textAlign:'center',lineHeight:1.3,wordBreak:'break-word'}}>{cap(name)}</span>
+      {poke&&<span style={{fontSize:10,color:'var(--dim)'}}>#{padId(poke.id)}</span>}
     </button>
   );
 }
-function EvoArrow({ detail }) {
+
+function EvoArrow({detail}) {
   return (
-    <div className="flex flex-col items-center justify-center px-1 min-w-[56px]">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-indigo-400">
-        <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'0 4px',minWidth:44,flexShrink:0}}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent-light)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M5 12h14M13 6l6 6-6 6"/>
       </svg>
-      {detail&&<span className="text-gray-600 text-xs text-center mt-0.5 max-w-[56px] leading-tight">{detail}</span>}
+      {detail&&<span style={{fontSize:10,color:'var(--dim)',textAlign:'center',marginTop:2,maxWidth:44,lineHeight:1.3}}>{detail}</span>}
     </div>
   );
 }
-function parseEvoChain(chain) {
+
+function parseEvo(chain) {
   const stages=[];
   const walk=(node,s)=>{
     if(!stages[s]) stages[s]=[];
     const det=node.evolution_details?.[0]; let req='';
     if(det){
       if(det.min_level) req=`Lv.${det.min_level}`;
-      else if(det.item) req=capitalize(det.item.name.replace(/-/g,' '));
-      else if(det.held_item) req=capitalize(det.held_item.name.replace(/-/g,' '));
+      else if(det.item) req=cap(det.item.name.replace(/-/g,' '));
+      else if(det.held_item) req=cap(det.held_item.name.replace(/-/g,' '));
       else if(det.trigger?.name==='trade') req='Trade';
       else if(det.min_happiness) req=`Happy(${det.min_happiness})`;
-      else req=capitalize((det.trigger?.name||'').replace(/-/g,' '));
+      else req=cap((det.trigger?.name||'').replace(/-/g,' '));
     }
     stages[s].push({name:node.species.name,req});
     node.evolves_to.forEach(n=>walk(n,s+1));
   };
   walk(chain,0); return stages;
 }
-function EvolutionChain({ speciesName, isShiny, is3D, onSelect, activeName }) {
-  const [stages, setStages] = React.useState(null);
-  const [loading, setLoading] = React.useState(false);
+
+function EvoChain({speciesName,isShiny,is3D,onSelect,activeName}) {
+  const [stages,setStages]=React.useState(null);
+  const [loading,setLoading]=React.useState(false);
   React.useEffect(()=>{
     if(!speciesName) return;
     setLoading(true); setStages(null);
     fetchSpecies(speciesName)
       .then(sp=>sp?fetchEvoChain(sp.evolution_chain.url):null)
-      .then(chain=>{ if(chain) setStages(parseEvoChain(chain.chain)); })
+      .then(chain=>{ if(chain) setStages(parseEvo(chain.chain)); })
       .catch(()=>{}).finally(()=>setLoading(false));
   },[speciesName]);
-  if(loading) return <div className="flex justify-center py-4"><LoadingSpinner /></div>;
+  if(loading) return <div style={{display:'flex',justifyContent:'center',padding:20}}><Spinner/></div>;
   if(!stages) return null;
-  if(stages.length<=1&&stages[0]?.length<=1) return <div className="text-gray-600 text-sm text-center py-2">No evolutions</div>;
+  if(stages.length<=1&&stages[0]?.length<=1) return <div style={{padding:'12px 0',textAlign:'center',color:'var(--dim)',fontSize:13}}>No evolutions</div>;
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1 py-2">
+    <div style={{display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'center',gap:4,padding:'8px 0',overflowX:'auto'}}>
       {stages.map((stage,si)=>(
         <React.Fragment key={si}>
           {si>0&&(
-            <div className="flex flex-col gap-2">
-              {stage.some(n=>n.req) ? stage.map(n=>n.req&&<EvoArrow key={n.name} detail={n.req} />) : <EvoArrow detail="" />}
+            <div style={{display:'flex',flexDirection:'column',gap:4}}>
+              {stage.some(n=>n.req)?stage.map(n=>n.req&&<EvoArrow key={n.name} detail={n.req}/>):<EvoArrow detail=""/>}
             </div>
           )}
-          <div className={`flex flex-col gap-2 ${stage.length>1?'justify-center':''}`}>
-            {stage.map(n=><EvoNode key={n.name} name={n.name} isShiny={isShiny} is3D={is3D} onSelect={onSelect} isActive={n.name===activeName} />)}
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            {stage.map(n=><EvoNode key={n.name} name={n.name} isShiny={isShiny} is3D={is3D} onSelect={onSelect} isActive={n.name===activeName}/>)}
           </div>
         </React.Fragment>
       ))}
@@ -1225,301 +1182,248 @@ function EvolutionChain({ speciesName, isShiny, is3D, onSelect, activeName }) {
   );
 }
 
-// ── COMPARE PANEL ─────────────────────────────────────────────────────────
-function ComparePanel({ isShiny, is3D }) {
-  const [pokeA, setPokeA] = React.useState(null);
-  const [pokeB, setPokeB] = React.useState(null);
-  const [ldA, setLdA]     = React.useState(false);
-  const [ldB, setLdB]     = React.useState(false);
-  const load = (name, set, setLd) => { setLd(true); fetchPokemon(name).then(set).catch(()=>set(null)).finally(()=>setLd(false)); };
-  const sA = pokeA?getGoStats(pokeA):null, sB = pokeB?getGoStats(pokeB):null;
-  const maxA = sA?calcCP(sA.attack,sA.defense,sA.hp,15,15,15,50):0;
-  const maxB = sB?calcCP(sB.attack,sB.defense,sB.hp,15,15,15,50):0;
-  const bar = (vA,vB,label) => {
-    const mx=Math.max(vA||0,vB||0,1), pA=((vA||0)/mx)*100, pB=((vB||0)/mx)*100;
+// ── COMPARE PANEL ──────────────────────────────────────────────────────────
+function ComparePanel({isShiny,is3D}) {
+  const [pokeA,setPokeA]=React.useState(null);
+  const [pokeB,setPokeB]=React.useState(null);
+  const [ldA,setLdA]=React.useState(false);
+  const [ldB,setLdB]=React.useState(false);
+  const load=(name,set,setLd)=>{setLd(true);fetchPoke(name).then(set).catch(()=>set(null)).finally(()=>setLd(false));};
+  const sA=pokeA?goStats(pokeA):null, sB=pokeB?goStats(pokeB):null;
+  const maxA=sA?calcCP(sA.atk,sA.def,sA.hp,15,15,15,50):0;
+  const maxB=sB?calcCP(sB.atk,sB.def,sB.hp,15,15,15,50):0;
+  const bars=(vA,vB,label)=>{
+    const mx=Math.max(vA||0,vB||0,1),pA=((vA||0)/mx)*100,pB=((vB||0)/mx)*100;
     const w=vA>vB?'A':vA<vB?'B':null;
     return (
-      <div key={label} className="flex items-center gap-2 mb-1.5">
-        <span className={`text-xs w-8 text-right font-bold ${w==='A'?'text-blue-400':'text-gray-500'}`}>{(vA||0).toLocaleString()}</span>
-        <div className="flex-1 flex gap-0.5">
-          <div className="stat-bar flex-1"><div className="stat-fill" style={{width:`${pA}%`,background:w==='A'?'linear-gradient(90deg,#6366f1,#818cf8)':'linear-gradient(90deg,#4b5563,#6b7280)',marginLeft:'auto'}} /></div>
-          <div className="text-gray-600 text-xs w-20 text-center shrink-0 leading-tight">{label}</div>
-          <div className="stat-bar flex-1"><div className="stat-fill" style={{width:`${pB}%`,background:w==='B'?'linear-gradient(90deg,#ec4899,#f43f5e)':'linear-gradient(90deg,#4b5563,#6b7280)'}} /></div>
+      <div key={label} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+        <span style={{fontSize:11,fontWeight:700,width:32,textAlign:'right',color:w==='A'?'#818cf8':'var(--dim)',flexShrink:0}}>{(vA||0).toLocaleString()}</span>
+        <div style={{flex:1,display:'flex',gap:3,minWidth:0,alignItems:'center'}}>
+          <div style={{flex:1,height:5,borderRadius:99,background:'var(--s3)',overflow:'hidden'}}>
+            <div style={{height:'100%',borderRadius:99,marginLeft:'auto',width:`${pA}%`,background:w==='A'?'var(--accent)':'var(--s3)',transition:'width .6s'}}/>
+          </div>
+          <span style={{fontSize:10,color:'var(--dim)',width:52,textAlign:'center',flexShrink:0,lineHeight:1.2}}>{label}</span>
+          <div style={{flex:1,height:5,borderRadius:99,background:'var(--s3)',overflow:'hidden'}}>
+            <div style={{height:'100%',borderRadius:99,width:`${pB}%`,background:w==='B'?'#db2777':'var(--s3)',transition:'width .6s'}}/>
+          </div>
         </div>
-        <span className={`text-xs w-8 font-bold ${w==='B'?'text-pink-400':'text-gray-500'}`}>{(vB||0).toLocaleString()}</span>
+        <span style={{fontSize:11,fontWeight:700,width:32,color:w==='B'?'#f472b6':'var(--dim)',flexShrink:0}}>{(vB||0).toLocaleString()}</span>
       </div>
     );
   };
   return (
-    <div className="space-y-4 animate-fade-in">
-      <div className="grid grid-cols-2 gap-3">
+    <div style={{display:'flex',flexDirection:'column',gap:14}}>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
         {[[pokeA,setPokeA,ldA,setLdA,sA,maxA,'A'],[pokeB,setPokeB,ldB,setLdB,sB,maxB,'B']].map(([poke,set,ld,setLd,stats,maxCP,slot])=>(
-          <div key={slot} className="glass rounded-2xl p-4 space-y-3">
-            <SearchBar onSelect={name=>load(name,set,setLd)} placeholder={`Search Pokémon ${slot}…`} />
-            {ld&&<div className="flex justify-center py-4"><LoadingSpinner /></div>}
+          <div key={slot} className="card2" style={{padding:'14px 12px',display:'flex',flexDirection:'column',gap:10}}>
+            <SearchBar onSelect={n=>load(n,set,setLd)} placeholder={`Pokémon ${slot}…`}/>
+            {ld&&<div style={{display:'flex',justifyContent:'center',padding:16}}><Spinner/></div>}
             {poke&&!ld&&(
-              <div className="flex flex-col items-center gap-2 animate-fade-in">
-                <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={96} />
-                <p className="text-white font-bold text-base">{formatDisplayName(poke.name)}</p>
-                <p className="text-gray-500 text-xs">#{padId(poke.id)}</p>
-                <div className="flex gap-1 flex-wrap justify-center">{poke.types.map(t=><TypeBadge key={t.type.name} type={t.type.name} />)}</div>
-                <div className="w-full glass rounded-xl p-3 text-center">
-                  <p className="text-gray-500 text-xs">Max CP (Lv50 15/15/15)</p>
-                  <p className="text-2xl font-black text-indigo-400">{maxCP.toLocaleString()}</p>
+              <div className="fade-in" style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6}}>
+                <PokemonImage poke={poke} isShiny={isShiny} is3D={is3D} size={88}/>
+                <div style={{fontWeight:700,fontSize:14,textAlign:'center'}}>{fmtName(poke.name)}</div>
+                <div style={{fontSize:11,color:'var(--dim)'}}>#{padId(poke.id)}</div>
+                <div style={{display:'flex',gap:4,flexWrap:'wrap',justifyContent:'center'}}>
+                  {poke.types.map(t=><TypeBadge key={t.type.name} type={t.type.name}/>)}
+                </div>
+                <div className="card3" style={{width:'100%',padding:'8px',textAlign:'center',marginTop:2}}>
+                  <div style={{fontSize:10,color:'var(--dim)',marginBottom:2}}>Max CP (Lv50)</div>
+                  <div style={{fontSize:20,fontWeight:800,color:'var(--accent-light)'}}>{maxCP.toLocaleString()}</div>
                 </div>
               </div>
             )}
             {!poke&&!ld&&(
-              <div className="flex flex-col items-center justify-center py-8 text-gray-700">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/></svg>
-                <p className="text-sm mt-2">Select Pokémon {slot}</p>
+              <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'20px 0',color:'var(--dim)',gap:6}}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/></svg>
+                <span style={{fontSize:12}}>Select Pokémon {slot}</span>
               </div>
             )}
           </div>
         ))}
       </div>
       {pokeA&&pokeB&&(
-        <div className="glass rounded-2xl p-4 space-y-1 animate-slide-up">
-          <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3">Stat Comparison</p>
-          <p className="text-indigo-400 text-xs font-semibold mb-1">Pokémon GO Stats</p>
-          {bar(sA?.attack,  sB?.attack,  'Attack')}
-          {bar(sA?.defense, sB?.defense, 'Defense')}
-          {bar(sA?.hp,      sB?.hp,      'HP')}
-          {bar(maxA,        maxB,        'Max CP')}
+        <div className="card2" style={{padding:'14px 16px'}}>
+          <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--muted)',marginBottom:10}}>Stat Comparison</div>
+          {bars(sA?.atk,  sB?.atk,  'Attack')}
+          {bars(sA?.def,  sB?.def,  'Defense')}
+          {bars(sA?.hp,   sB?.hp,   'HP')}
+          {bars(maxA,     maxB,     'Max CP')}
         </div>
       )}
     </div>
   );
 }
 
-// ── POKEMON CARD ──────────────────────────────────────────────────────────
-function PokemonCard({ pokemon, species, isShiny, is3D, shadowType, onToggleShiny, onToggle3D }) {
-  const goStats     = getGoStats(pokemon);
-  const types       = pokemon.types.map(t=>t.type.name);
-  const typeColor   = TYPE_COLORS[types[0]]||'#6366f1';
-  const shadowColor = shadowType==='shadow'?'#7c3aed':shadowType==='purified'?'#06b6d4':null;
-  const shadowLabel = shadowType==='shadow'?'👻 Shadow':shadowType==='purified'?'✨ Purified':null;
-  const dispAtk  = shadowType==='shadow'?Math.round(goStats.attack*1.2):goStats.attack;
-  const dispDef  = shadowType==='shadow'?Math.round(goStats.defense*0.8):goStats.defense;
-  const shadowNote = shadowType==='shadow'?'(×1.2 ATK / ×0.8 DEF in raids)':shadowType==='purified'?'(+2 IV floor when purified)':null;
-  const spriteFilter = shadowType==='purified'?'saturate(0.25) brightness(1.15)':undefined;
-  return (
-    <div className="glass-dark rounded-2xl overflow-hidden animate-slide-up relative"
-      style={{border:`1px solid ${shadowColor?shadowColor+'55':typeColor+'33'}`}}>
-      {shadowLabel&&(
-        <div className="px-5 pt-3 pb-0">
-          <div className="rounded-lg px-3 py-1.5 flex items-center gap-2 text-xs font-bold"
-            style={{background:shadowColor+'22',border:`1px solid ${shadowColor}44`,color:shadowColor}}>
-            <span>{shadowLabel}</span>
-            {shadowNote&&<span className="font-normal opacity-70">{shadowNote}</span>}
-          </div>
-        </div>
-      )}
-      <div className="relative p-5 pb-2" style={{background:`linear-gradient(135deg,${typeColor}22,transparent)`}}>
-        <div className="flex justify-between items-start">
-          <div>
-            <p className="text-gray-500 text-xs font-medium">#{padId(pokemon.id)}</p>
-            <h2 className="text-white text-2xl font-black mt-0.5">{formatDisplayName(pokemon.name)}</h2>
-            {species?.genera?.find(g=>g.language.name==='en')&&(
-              <p className="text-gray-500 text-xs">{species.genera.find(g=>g.language.name==='en').genus}</p>
-            )}
-            <div className="flex gap-1.5 mt-2 flex-wrap">{types.map(t=><TypeBadge key={t} type={t} size="lg" />)}</div>
-          </div>
-          <div className="flex flex-col gap-1.5 items-end">
-            <Toggle value={isShiny} onChange={onToggleShiny} label="✨ Shiny" />
-            <Toggle value={is3D}    onChange={onToggle3D}    label="🎮 3D" />
-          </div>
-        </div>
-        <div className="flex justify-center mt-2">
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full blur-3xl opacity-30"
-              style={{background:shadowType==='shadow'?'radial-gradient(circle,#7c3aed 0%,#4c1d95 60%,transparent 100%)':shadowColor||typeColor}} />
-            <div style={spriteFilter?{filter:spriteFilter}:{}}>
-              <PokemonImage pokemon={pokemon} isShiny={isShiny} is3D={is3D} shadowType={shadowType} size={160} className="relative z-10" />
-            </div>
-            {shadowType==='shadow'&&(
-              <div className="absolute inset-0 pointer-events-none rounded-lg z-20"
-                style={{background:'linear-gradient(150deg,rgba(88,28,235,0.38) 0%,rgba(109,40,217,0.22) 55%,transparent 100%)'}} />
-            )}
-          </div>
-        </div>
-        {isShiny&&(
-          <div className="absolute top-3 left-1/2 -translate-x-1/2">
-            <span className="text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-full px-3 py-0.5 font-semibold">✨ Shiny</span>
-          </div>
-        )}
-      </div>
-      <div className="px-5 pb-4">
-        <div className="grid grid-cols-3 gap-2 text-center mt-2">
-          {[['Attack',dispAtk,'#f87171'],['Defense',dispDef,'#60a5fa'],['HP',goStats.hp,'#34d399']].map(([l,v,c])=>(
-            <div key={l} className="rounded-lg p-2" style={{background:c+'15',border:`1px solid ${c}33`}}>
-              <p className="text-xs font-semibold" style={{color:c}}>{l}</p>
-              <p className="text-white font-bold text-lg">{v}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-3 text-center">
-          <p className="text-gray-600 text-xs">Max CP (Lv50 15/15/15)</p>
-          <p className="text-indigo-400 font-black text-2xl">{calcCP(goStats.attack,goStats.defense,goStats.hp,15,15,15,50).toLocaleString()}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── APP ───────────────────────────────────────────────────────────────────
+// ── MAIN APP ───────────────────────────────────────────────────────────────
 function App() {
-  const [activePokemon, setActivePokemon]   = React.useState(null);
-  const [activeSpecies, setActiveSpecies]   = React.useState(null);
-  const [activeShadow,  setActiveShadow]    = React.useState(null);
-  const [loading, setLoading]               = React.useState(false);
-  const [error,   setError]                 = React.useState(null);
-  const [isShiny, setIsShiny]               = React.useState(false);
-  const [is3D,    setIs3D]                  = React.useState(true);
-  const [activeTab, setActiveTab]           = React.useState('info');
-  const [mode,    setMode]                  = React.useState('dex');
-  const [showDex, setShowDex]               = React.useState(false);
+  const [poke,setPoke]         = React.useState(null);
+  const [species,setSpecies]   = React.useState(null);
+  const [shadow,setShadow]     = React.useState(null);
+  const [loading,setLoading]   = React.useState(false);
+  const [error,setError]       = React.useState(null);
+  const [isShiny,setIsShiny]   = React.useState(false);
+  const [is3D,setIs3D]         = React.useState(true);
+  const [tab,setTab]           = React.useState('info');
+  const [mode,setMode]         = React.useState('dex');
+  const [showDex,setShowDex]   = React.useState(false);
 
-  const loadPokemon = React.useCallback(async (nameOrId) => {
+  const typeColor = poke ? (TYPE_COLORS[poke.types[0].type.name]||'var(--accent)') : 'var(--accent)';
+
+  const load=React.useCallback(async nameOrId=>{
     setLoading(true); setError(null); setIsShiny(false);
-    let api = String(nameOrId).toLowerCase();
-    let shadow = null;
-    if(api.endsWith('-shadow'))   { shadow='shadow';   api=api.replace(/-shadow$/,''); }
-    if(api.endsWith('-purified')) { shadow='purified'; api=api.replace(/-purified$/,''); }
+    let api=String(nameOrId).toLowerCase(), sh=null;
+    if(api.endsWith('-shadow'))   {sh='shadow';   api=api.replace(/-shadow$/,'');}
+    if(api.endsWith('-purified')) {sh='purified'; api=api.replace(/-purified$/,'');}
     try {
-      const poke = await fetchPokemon(api);
-      setActivePokemon(poke); setActiveShadow(shadow); setActiveTab('info');
-      const sp = await fetchSpecies(poke.species?.name||poke.name).catch(()=>null);
-      setActiveSpecies(sp);
+      const p=await fetchPoke(api);
+      setPoke(p); setShadow(sh); setTab('info');
+      const sp=await fetchSpecies(p.species?.name||p.name).catch(()=>null);
+      setSpecies(sp);
     } catch {
-      setError(`Could not find "${nameOrId}". Try a name or number.`);
-      setActivePokemon(null); setActiveSpecies(null); setActiveShadow(null);
+      setError(`"${nameOrId}" not found. Try a name like "pikachu" or a number.`);
+      setPoke(null); setSpecies(null); setShadow(null);
     } finally { setLoading(false); }
-  }, []);
+  },[]);
 
-  React.useEffect(()=>{ loadPokemon('mewtwo'); },[]);
+  React.useEffect(()=>{ load('mewtwo'); },[]);
 
-  const tabs = [
-    { id:'info',     label:'Info',      icon:'📋' },
-    { id:'cp',       label:'CP Calc',   icon:'⚡' },
-    { id:'iv',       label:'IV Chart',  icon:'🧬' },
-    { id:'raid',     label:'Raid IVs',  icon:'⚔️' },
-    { id:'counters', label:'Counters',  icon:'🏆' },
-    { id:'evo',      label:'Evolution', icon:'🔄' },
+  const TABS=[
+    {id:'info',    label:'Info',      icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>},
+    {id:'cp',      label:'CP Calc',   icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>},
+    {id:'iv',      label:'IV Chart',  icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>},
+    {id:'raid',    label:'Raid IVs',  icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
+    {id:'counters',label:'Counters',  icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>},
+    {id:'evo',     label:'Evolution', icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>},
   ];
 
   return (
-    <div className="min-h-screen text-white" style={{background:'linear-gradient(135deg,#0a0a0f 0%,#0d0d1a 50%,#0a0f1a 100%)'}}>
-      <header className="glass-dark sticky top-0 z-50 px-4 py-3">
-        <div className="max-w-7xl mx-auto flex items-center gap-4">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{background:'linear-gradient(135deg,#ef4444,#dc2626)'}}>
-              <div className="w-3 h-3 rounded-full bg-white" />
+    <div style={{minHeight:'100vh',background:'var(--bg)',color:'var(--text)'}}>
+
+      {/* ── Header ─────────────────────────────────────── */}
+      <header style={{background:'var(--s1)',borderBottom:'1px solid var(--border)',position:'sticky',top:0,zIndex:50}}>
+        <div style={{maxWidth:1280,margin:'0 auto',padding:'10px 16px'}}>
+          <div className="header-mobile">
+            <div style={{display:'flex',alignItems:'center',gap:10}}>
+              <Pokeball size={28}/>
+              <span style={{fontWeight:800,fontSize:14,letterSpacing:'-.02em',flex:1}}>GO Dex</span>
+              <button onClick={()=>setMode('dex')} className={`btn${mode==='dex'?' active-blue':''}`} style={{padding:'5px 12px',fontSize:11}}>Dex</button>
+              <button onClick={()=>setMode('compare')} className={`btn${mode==='compare'?' active-pink':''}`} style={{padding:'5px 12px',fontSize:11}}>Compare</button>
             </div>
-            <div className="hidden sm:block">
-              <h1 className="text-white font-black text-sm leading-none">Pokémon GO</h1>
-              <p className="text-indigo-400 text-xs font-semibold">Dex &amp; CP Calculator</p>
-            </div>
+            <SearchBar onSelect={load}/>
           </div>
-          <div className="flex-1 max-w-md"><SearchBar onSelect={loadPokemon} /></div>
-          <div className="flex gap-2 shrink-0">
-            <button onClick={()=>setMode('dex')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='dex'?'bg-indigo-600 text-white':'glass text-gray-400 hover:text-white'}`}>📖 Dex</button>
-            <button onClick={()=>setMode('compare')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='compare'?'bg-pink-600 text-white':'glass text-gray-400 hover:text-white'}`}>⚖️ Compare</button>
+          <div className="header-desktop">
+            <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+              <Pokeball size={30}/>
+              <div>
+                <div style={{fontWeight:800,fontSize:13,letterSpacing:'-.02em',lineHeight:1.1}}>Pokémon GO</div>
+                <div style={{fontSize:10,color:'var(--muted)',fontWeight:500,letterSpacing:'.05em',textTransform:'uppercase',marginTop:1}}>Dex &amp; CP Calc</div>
+              </div>
+            </div>
+            <div style={{flex:1,maxWidth:440}}><SearchBar onSelect={load}/></div>
+            <div style={{display:'flex',gap:8,flexShrink:0}}>
+              <button onClick={()=>setMode('dex')} className={`btn${mode==='dex'?' active-blue':''}`}>Dex</button>
+              <button onClick={()=>setMode('compare')} className={`btn${mode==='compare'?' active-pink':''}`}>Compare</button>
+            </div>
           </div>
         </div>
       </header>
 
-      {mode==='compare' ? (
-        <main className="max-w-5xl mx-auto px-4 py-6">
-          <div className="mb-4">
-            <h2 className="text-white font-black text-xl">Side-by-Side Comparison</h2>
-            <p className="text-gray-500 text-sm">Compare Pokémon GO stats and max CP side by side</p>
+      {/* ── Content ───────────────────────────────────── */}
+      {mode==='compare'?(
+        <main style={{maxWidth:1000,margin:'0 auto',padding:'20px 16px 32px'}}>
+          <div style={{marginBottom:16}}>
+            <h2 style={{fontSize:18,fontWeight:800,letterSpacing:'-.02em'}}>Compare</h2>
+            <p style={{fontSize:13,color:'var(--muted)',marginTop:3}}>Side-by-side GO stats and max CP</p>
           </div>
-          <ComparePanel isShiny={isShiny} is3D={is3D} />
+          <ComparePanel isShiny={isShiny} is3D={is3D}/>
         </main>
-      ) : (
-        <main className="max-w-7xl mx-auto px-4 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-1">
-              <div className="glass-dark rounded-2xl p-4">
-                <button onClick={()=>setShowDex(!showDex)} className="flex items-center justify-between w-full lg:cursor-default mb-3">
-                  <h3 className="text-white font-bold text-sm uppercase tracking-widest">Pokédex</h3>
-                  <span className="lg:hidden text-gray-400 text-xs">{showDex?'▲ Hide':'▼ Show'}</span>
+      ):(
+        <main style={{maxWidth:1280,margin:'0 auto',padding:'16px 16px 32px'}}>
+          <div className="layout-main">
+
+            {/* ── Dex sidebar ── */}
+            <div className="dex-sidebar">
+              <div className="card" style={{padding:'14px'}}>
+                <button onClick={()=>setShowDex(!showDex)}
+                  style={{display:'flex',justifyContent:'space-between',alignItems:'center',width:'100%',background:'none',border:'none',cursor:'pointer',color:'var(--text)',padding:0,fontFamily:'inherit',marginBottom:showDex?12:0}}>
+                  <span style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--muted)'}}>Pokédex</span>
+                  <span className="dex-toggle-hint-mobile" style={{fontSize:11,color:'var(--muted)',padding:'3px 9px',borderRadius:6,background:'var(--s2)',border:'1px solid var(--border2)'}}>{showDex?'Hide ▲':'Browse ▼'}</span>
+                  <span className="dex-toggle-hint-desktop" style={{fontSize:11,color:'var(--dim)'}}>scroll to browse</span>
                 </button>
-                <div className={`${showDex?'block':'hidden'} lg:block`}>
-                  <PokedexGrid onSelect={loadPokemon} activeName={activePokemon?.name} />
+                <div style={{display:showDex?'block':'none'}} className="dex-always-show">
+                  <DexGrid onSelect={n=>{load(n);setShowDex(false);}} activeName={poke?.name}/>
                 </div>
               </div>
             </div>
 
-            <div className="lg:col-span-2 space-y-4">
+            {/* ── Detail panel ── */}
+            <div className="detail-panel" style={{display:'flex',flexDirection:'column',gap:12}}>
               {loading&&(
-                <div className="glass-dark rounded-2xl p-12 flex flex-col items-center gap-4">
-                  <LoadingSpinner size="lg" /><p className="text-gray-500 text-sm">Loading…</p>
+                <div className="card" style={{padding:'64px 20px',display:'flex',flexDirection:'column',alignItems:'center',gap:12}}>
+                  <Spinner size="lg"/>
+                  <span style={{color:'var(--muted)',fontSize:13}}>Loading…</span>
                 </div>
               )}
               {error&&!loading&&(
-                <div className="glass-dark rounded-2xl p-8 text-center">
-                  <p className="text-red-400 text-4xl mb-3">😵</p>
-                  <p className="text-red-400 font-semibold">{error}</p>
-                  <p className="text-gray-600 text-sm mt-1">Try "pikachu", "charizard" or a Pokédex number</p>
+                <div className="card" style={{padding:'40px 20px',textAlign:'center'}}>
+                  <div style={{fontSize:36,marginBottom:12}}>🙁</div>
+                  <div style={{fontWeight:600,color:'#f87171',fontSize:14,marginBottom:6}}>{error}</div>
+                  <div style={{fontSize:12,color:'var(--muted)'}}>Try "charizard", "rayquaza", or a Pokédex number</div>
                 </div>
               )}
-              {activePokemon&&!loading&&(
-                <>
-                  <PokemonCard pokemon={activePokemon} species={activeSpecies}
-                    isShiny={isShiny} is3D={is3D} shadowType={activeShadow}
-                    onToggleShiny={setIsShiny} onToggle3D={setIs3D} />
-                  <div className="glass-dark rounded-2xl overflow-hidden">
-                    <div className="flex border-b border-white/10 overflow-x-auto">
-                      {tabs.map(t=>(
-                        <button key={t.id} onClick={()=>setActiveTab(t.id)}
-                          className={`flex-1 min-w-max py-3 px-2 text-xs font-semibold transition-all duration-200 flex items-center justify-center gap-1 ${activeTab===t.id?'tab-active text-white':'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}>
-                          <span>{t.icon}</span><span>{t.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="p-5">
-                      {activeTab==='info'&&     <DetailPanel pokemon={activePokemon} species={activeSpecies} />}
-                      {activeTab==='cp'&&        <CPCalculator pokemon={activePokemon} />}
-                      {activeTab==='iv'&&        <IVChart pokemon={activePokemon} />}
-                      {activeTab==='raid'&&      <RaidIVChart pokemon={activePokemon} />}
-                      {activeTab==='counters'&&  <RaidCounters pokemon={activePokemon} />}
-                      {activeTab==='evo'&&(
-                        <div>
-                          <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3">Evolution Chain</p>
-                          <EvolutionChain speciesName={activePokemon.species?.name||activePokemon.name}
-                            isShiny={isShiny} is3D={is3D} onSelect={loadPokemon} activeName={activePokemon.name} />
-                        </div>
-                      )}
-                    </div>
+              {poke&&!loading&&(<>
+                <PokemonCard poke={poke} species={species} isShiny={isShiny} is3D={is3D} shadowType={shadow} onShiny={setIsShiny} on3D={setIs3D}/>
+                <div className="card" style={{overflow:'hidden'}}>
+                  <div className="tab-bar">
+                    {TABS.map(t=>(
+                      <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`}
+                        style={tab===t.id?{borderBottomColor:typeColor}:{}}
+                        onClick={()=>setTab(t.id)}>
+                        {t.icon}
+                        <span>{t.label}</span>
+                      </button>
+                    ))}
                   </div>
-                </>
-              )}
-              {!activePokemon&&!loading&&!error&&(
-                <div className="glass-dark rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
-                  <div className="text-6xl">🔴</div>
-                  <h3 className="text-white font-bold text-xl">Welcome to GO Dex</h3>
-                  <p className="text-gray-500 text-sm max-w-sm">Search for any Pokémon or browse the Pokédex on the left.</p>
+                  <div style={{padding:'16px 14px'}}>
+                    {tab==='info'&&     <DetailPanel  poke={poke} species={species}/>}
+                    {tab==='cp'&&       <CPCalc       poke={poke}/>}
+                    {tab==='iv'&&       <IVChart      poke={poke}/>}
+                    {tab==='raid'&&     <RaidIVChart  poke={poke}/>}
+                    {tab==='counters'&& <RaidCounters poke={poke}/>}
+                    {tab==='evo'&&(
+                      <div>
+                        <div style={{fontSize:11,fontWeight:700,textTransform:'uppercase',letterSpacing:'.07em',color:'var(--muted)',marginBottom:12}}>Evolution Chain</div>
+                        <EvoChain speciesName={poke.species?.name||poke.name} isShiny={isShiny} is3D={is3D} onSelect={load} activeName={poke.name}/>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>)}
+              {!poke&&!loading&&!error&&(
+                <div className="card" style={{padding:'64px 20px',display:'flex',flexDirection:'column',alignItems:'center',gap:12,textAlign:'center'}}>
+                  <Pokeball size={48}/>
+                  <div>
+                    <h3 style={{fontSize:18,fontWeight:800,marginBottom:6}}>Pokémon GO Dex</h3>
+                    <p style={{fontSize:13,color:'var(--muted)',maxWidth:280,lineHeight:1.6,margin:'0 auto'}}>Search for any Pokémon above, or tap Browse to open the Pokédex.</p>
+                  </div>
                 </div>
               )}
             </div>
+
           </div>
         </main>
       )}
 
-      <footer className="text-center py-6 text-gray-700 text-xs">
-        <p>Pokémon GO Dex &amp; CP Calculator • Data from <a href="https://pokeapi.co" className="text-indigo-500 hover:text-indigo-400" target="_blank" rel="noopener">PokéAPI</a></p>
-        <p className="mt-1">Not affiliated with Niantic, Inc. or Nintendo</p>
+      <footer style={{textAlign:'center',padding:'24px 16px',color:'var(--dim)',fontSize:11,borderTop:'1px solid var(--border)',marginTop:4}}>
+        Data from <a href="https://pokeapi.co" target="_blank" rel="noopener" style={{color:'var(--accent-light)'}}>PokéAPI</a>
+        {' · '}Not affiliated with Niantic or Nintendo
       </footer>
     </div>
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(<App />);
+const root=ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
 </script>
 </body>
 </html>
