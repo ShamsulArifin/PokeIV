@@ -8,42 +8,86 @@ function Spinner({ size = 'md' }) {
   });
 }
 
-// ── Type icon IDs — matches PokeAPI /type/ endpoint ──────────────────────
-const TYPE_IDS = {
-  normal:1, fighting:2, flying:3, poison:4, ground:5, rock:6,
-  bug:7, ghost:8, steel:9, fire:10, water:11, grass:12,
-  electric:13, psychic:14, ice:15, dragon:16, dark:17, fairy:18,
-};
-const TYPE_ICON_BASE = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/types/generation-viii/sword-shield/';
+// ── Pokémon GO–style type SVG icons ──────────────────────────────────────
+const TYPE_SVGS = {
+  // Normal — plain circle with ring
+  normal: <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4.5" fill="rgba(0,0,0,0.18)"/></svg>,
 
-// ── TypeBadge — shows the official Pokémon type icon ─────────────────────
-// lg = larger variant (PokemonCard, RaidCounters defending types)
-// sm = default (type matchup lists, CounterRow attacker types)
+  // Fire — flame silhouette
+  fire: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2s-1.5 4-3.5 5.5c.2-1.8-.8-3.5-.8-3.5C5.2 6.5 4 10 4 12.5a8 8 0 0 0 16 0c0-4-3.5-7-5-8.5 0 1.5-1 3.5-3 5 1-2.5 0-7 0-7z"/></svg>,
+
+  // Water — teardrop
+  water: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 5.5 13.5a6.5 6.5 0 0 0 13 0Z"/></svg>,
+
+  // Grass — three-leaf clover / leaf fan
+  grass: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21V11"/><path d="M12 11c0-4-3.5-7-8-6.5 0 4 3 6.5 8 6.5"/><path d="M12 11c0-4 3.5-7 8-6.5 0 4-3 6.5-8 6.5"/><path d="M12 15c-1.5-2-4-3-6-2 1 2.5 3 3.5 6 3"/><path d="M12 15c1.5-2 4-3 6-2-1 2.5-3 3.5-6 3"/></svg>,
+
+  // Electric — lightning bolt
+  electric: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 3.5 13.5H11l-1 8.5L20.5 10H13Z"/></svg>,
+
+  // Ice — snowflake
+  ice: <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="5.5" y1="5.5" x2="18.5" y2="18.5"/><line x1="18.5" y1="5.5" x2="5.5" y2="18.5"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/></svg>,
+
+  // Fighting — clenched fist
+  fighting: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10a2 2 0 0 1 2-2h1V7a1.5 1.5 0 0 1 3 0v1h.5a1.5 1.5 0 0 1 1.5 1.5V10a1.5 1.5 0 0 1 1.5 1.5V13a5 5 0 0 1-5 5H9a5 5 0 0 1-4-2l-1-1.5a1.5 1.5 0 0 1 2.5-1.5L7 14V10z"/></svg>,
+
+  // Poison — skull / poison bubble
+  poison: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a6 6 0 0 1 6 6c0 2.2-1 3.8-2.3 5.2l.8 1.8a1 1 0 0 1-.9 1.4H8.4a1 1 0 0 1-.9-1.4l.8-1.8C7 12.8 6 11.2 6 9a6 6 0 0 1 6-6z"/><rect x="9" y="17.5" width="6" height="3.5" rx="1"/><circle cx="9.5" cy="8.5" r="1.2" fill="rgba(0,0,0,0.28)"/><circle cx="14.5" cy="8.5" r="1.2" fill="rgba(0,0,0,0.28)"/></svg>,
+
+  // Ground — mountain / terrain layers
+  ground: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 19l5-9 4 6 3-4 4 7H2z"/><path d="M2 21h20" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>,
+
+  // Flying — bird wings
+  flying: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 10c3-5 8-7 10-7 3.5 0 6 2.5 6 6 0 4-3.5 6.5-7 7.5l-1-2c2.5-1 5-2.5 5-5.5 0-2-1.5-3.5-3.5-3.5-2 0-5.5 2-8.5 5.5L2 10z"/><path d="M7 17c2.5-2 5.5-3.5 8-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>,
+
+  // Psychic — eye with starburst / spiral
+  psychic: <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="8" opacity="0.2"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="2.5" fill="rgba(0,0,0,0.35)"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/></svg>,
+
+  // Bug — bug silhouette
+  bug: <svg viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="14" rx="4" ry="5"/><path d="M8.5 9c-1-1-2.5-1.5-4.5-.5M15.5 9c1-1 2.5-1.5 4.5-.5"/><path d="M8 14H4M16 14h4"/><path d="M8 17.5L5 20M16 17.5l3 2.5"/><ellipse cx="12" cy="8" rx="2.5" ry="2" fill="currentColor"/></svg>,
+
+  // Rock — jagged boulder
+  rock: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 4 3 13l3.5 7h11L21 13l-5-9H8z"/><path d="M8 4l4 5h4l3-5M8 4l-5 9 5 1M21 13l-5-1M7.5 20l4-5M16.5 20l-4-5" fill="none" stroke="rgba(0,0,0,0.18)" strokeWidth="1"/></svg>,
+
+  // Ghost — classic ghost shape
+  ghost: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3a8 8 0 0 0-8 8v10l2.5-2.5L9 21l2.5-2.5L14 21l2.5-2.5L19 21V11A8 8 0 0 0 12 3z"/><circle cx="9.5" cy="11" r="1.5" fill="rgba(0,0,0,0.32)"/><circle cx="14.5" cy="11" r="1.5" fill="rgba(0,0,0,0.32)"/></svg>,
+
+  // Dragon — dragon head / scale
+  dragon: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6l4 2-1.5 3.5L10 13l1.5 4.5 4-1.5 1.5-3.5L20 11l-2.5-4.5L14 8l-1.5-3.5-4 1L4 6z"/><path d="M15 15l4 4" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none"/></svg>,
+
+  // Dark — crescent moon
+  dark: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.8A9 9 0 0 1 11.2 3a7 7 0 1 0 9.8 9.8z"/></svg>,
+
+  // Steel — shield / hexagon
+  steel: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 3 4 7v6c0 4 3.5 7 8 8 4.5-1 8-4 8-8V7l-8-4z"/><path d="M12 3 4 7v6c0 4 3.5 7 8 8 4.5-1 8-4 8-8V7l-8-4z" fill="rgba(0,0,0,0.12)" transform="translate(1.5,2) scale(0.75)"/></svg>,
+
+  // Fairy — four-pointed star
+  fairy: <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/><circle cx="7" cy="19" r="1.2"/><circle cx="17" cy="19" r="1.2"/></svg>,
+};
+
+// ── TypeBadge — icon + label, GO colour palette ───────────────────────────
 function TypeBadge({ type, lg = false }) {
   const c    = TYPE_COLORS[type] || '#888';
-  const tid  = TYPE_IDS[type];
-  const size = lg ? 26 : 20;
-  const pad  = lg ? '3px 8px' : '2px 6px';
+  const icon = TYPE_SVGS[type] || null;
+  const size = lg ? 18 : 14;
+  const pad  = lg ? '4px 10px 4px 7px' : '2px 7px 2px 5px';
 
   return (
     <span
-      data-type-tip={cap(type)}
       style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        display: 'inline-flex', alignItems: 'center', gap: lg ? 5 : 4,
         padding: pad, borderRadius: 20, flexShrink: 0,
-        background: c + '20', border: `1px solid ${c}40`,
+        background: c + '28', border: `1px solid ${c}55`,
+        color: c,
       }}>
-      {tid ? (
-        <img
-          src={`${TYPE_ICON_BASE}${tid}.png`}
-          alt={type}
-          width={size}
-          height={size}
-          style={{ objectFit: 'contain', display: 'block' }}
-        />
-      ) : (
-        <span style={{ fontSize: lg ? 12 : 10, fontWeight: 600, color: c, textTransform: 'capitalize', lineHeight: 1 }}>{type}</span>
+      {icon && (
+        <span style={{ width: size, height: size, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {React.cloneElement(icon, { style: { width: size, height: size } })}
+        </span>
       )}
+      <span style={{ fontSize: lg ? 11 : 10, fontWeight: 700, letterSpacing: '.02em', textTransform: 'capitalize', lineHeight: 1, whiteSpace: 'nowrap' }}>
+        {cap(type)}
+      </span>
     </span>
   );
 }
