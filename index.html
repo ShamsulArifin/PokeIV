@@ -1,0 +1,1070 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pokémon GO Dex &amp; CP Calculator</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <style>
+    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+    body { background: #0a0a0f; margin: 0; padding: 0; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1a1a2e; }
+    ::-webkit-scrollbar-thumb { background: #3d3d6b; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #5555aa; }
+    .glass { background: rgba(255,255,255,0.05); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.08); }
+    .glass-dark { background: rgba(10,10,20,0.7); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.06); }
+    .glow-red { box-shadow: 0 0 20px rgba(239,68,68,0.3); }
+    .glow-blue { box-shadow: 0 0 20px rgba(99,102,241,0.3); }
+    .glow-gold { box-shadow: 0 0 20px rgba(251,191,36,0.4); }
+    .card-hover { transition: all 0.3s cubic-bezier(0.4,0,0.2,1); }
+    .card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
+    .type-badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+    .slider-thumb::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #818cf8; cursor: pointer; box-shadow: 0 0 8px rgba(129,140,248,0.6); }
+    .slider-thumb::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #818cf8; cursor: pointer; border: none; }
+    .slider-thumb { -webkit-appearance: none; appearance: none; height: 6px; border-radius: 3px; outline: none; cursor: pointer; }
+    .animate-fade-in { animation: fadeIn 0.4s ease-out; }
+    .animate-slide-up { animation: slideUp 0.4s cubic-bezier(0.4,0,0.2,1); }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .pokemon-img { filter: drop-shadow(0 8px 20px rgba(0,0,0,0.5)); transition: transform 0.3s ease; }
+    .pokemon-img:hover { transform: scale(1.05) rotate(-2deg); }
+    .shiny-glow { filter: drop-shadow(0 0 16px rgba(251,191,36,0.7)) drop-shadow(0 8px 20px rgba(0,0,0,0.5)); }
+    .tab-active { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+    .stat-bar { height: 8px; border-radius: 4px; background: rgba(255,255,255,0.1); overflow: hidden; }
+    .stat-fill { height: 100%; border-radius: 4px; transition: width 0.8s cubic-bezier(0.4,0,0.2,1); }
+    .evo-line::after { content: ''; position: absolute; top: 50%; left: 100%; width: 40px; height: 2px; background: linear-gradient(90deg, rgba(99,102,241,0.6), transparent); transform: translateY(-50%); }
+    .cp-display { background: linear-gradient(135deg, #1e1b4b, #312e81); border: 1px solid rgba(99,102,241,0.4); }
+    .search-dropdown { z-index: 1000; }
+    .pokedex-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+    @media (max-width: 640px) { .pokedex-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; } }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+
+// ===================== CONSTANTS =====================
+const CP_MULTIPLIERS = {
+  1:0.094,1.5:0.135137432,2:0.16639787,2.5:0.192650919,3:0.21573247,3.5:0.236572661,
+  4:0.25572005,4.5:0.273530381,5:0.29024988,5.5:0.306057377,6:0.3210876,6.5:0.335445036,
+  7:0.34921268,7.5:0.362457751,8:0.37523559,8.5:0.387592406,9:0.39956728,9.5:0.411193551,
+  10:0.42250001,10.5:0.432926419,11:0.44310755,11.5:0.453059958,12:0.46279839,12.5:0.472336083,
+  13:0.48168495,13.5:0.491008727,14:0.49985844,14.5:0.508701765,15:0.51739395,15.5:0.525942511,
+  16:0.53435433,16.5:0.542635767,17:0.55079269,17.5:0.558691524,18:0.56651357,18.5:0.574305815,
+  19:0.58200572,19.5:0.589887037,20:0.59740001,20.5:0.604818814,21:0.61215729,21.5:0.619399365,
+  22:0.62656069,22.5:0.633644533,23:0.64065295,23.5:0.647576426,24:0.65443563,24.5:0.661214806,
+  25:0.667934,25.5:0.674577537,26:0.68116492,26.5:0.687680648,27:0.69414365,27.5:0.700538717,
+  28:0.70688421,28.5:0.713164996,29:0.71939909,29.5:0.725571552,30:0.7317,30.5:0.734741009,
+  31:0.73776948,31.5:0.740785574,32:0.74378943,32.5:0.746781211,33:0.74976104,33.5:0.752729087,
+  34:0.75568551,34.5:0.758630378,35:0.76156384,35.5:0.764486065,36:0.76739717,36.5:0.770297266,
+  37:0.7731865,37.5:0.776064962,38:0.77893275,38.5:0.781790423,39:0.78463697,39.5:0.787473168,
+  40:0.79030001,40.5:0.792803968,41:0.79530001,41.5:0.797803921,42:0.80030001,42.5:0.802803876,
+  43:0.80530001,43.5:0.807803833,44:0.81030001,44.5:0.812803791,45:0.81530001,45.5:0.817803750,
+  46:0.82030001,46.5:0.822803710,47:0.82530001,47.5:0.827803671,48:0.83030001,48.5:0.832803633,
+  49:0.83530001,49.5:0.837803596,50:0.84029999
+};
+
+const TYPE_COLORS = {
+  normal:'#A8A878',fire:'#F08030',water:'#6890F0',electric:'#F8D030',grass:'#78C850',
+  ice:'#98D8D8',fighting:'#C03028',poison:'#A040A0',ground:'#E0C068',flying:'#A890F0',
+  psychic:'#F85888',bug:'#A8B820',rock:'#B8A038',ghost:'#705898',dragon:'#7038F8',
+  dark:'#705848',steel:'#B8B8D0',fairy:'#EE99AC',stellar:'#40B5A5',unknown:'#68A090'
+};
+
+const TYPE_EFFECTIVENESS = {
+  normal:{fighting:2,ghost:0},fire:{water:2,ground:2,rock:2,fire:0.5,grass:0.5,ice:0.5,bug:0.5,steel:0.5,fairy:0.5},
+  water:{electric:2,grass:2,fire:0.5,water:0.5,ice:0.5,steel:0.5},
+  electric:{ground:2,electric:0.5,flying:0.5,steel:0.5},
+  grass:{fire:2,ice:2,poison:2,flying:2,bug:2,water:0.5,electric:0.5,grass:0.5,ground:0.5},
+  ice:{fire:2,fighting:2,rock:2,steel:2,ice:0.5},
+  fighting:{flying:2,psychic:2,fairy:2,bug:0.5,rock:0.5,dark:0.5},
+  poison:{ground:2,psychic:2,fighting:0.5,poison:0.5,bug:0.5,grass:0.5,fairy:0.5},
+  ground:{water:2,grass:2,ice:2,electric:0,poison:0.5,rock:0.5,steel:0.5},
+  flying:{electric:2,ice:2,rock:2,fighting:0.5,bug:0.5,grass:0.5,ground:0},
+  psychic:{bug:2,ghost:2,dark:2,fighting:0.5,psychic:0.5},
+  bug:{fire:2,flying:2,rock:2,fighting:0.5,ground:0.5,grass:0.5},
+  rock:{water:2,grass:2,fighting:2,ground:2,steel:2,normal:0.5,fire:0.5,poison:0.5,flying:0.5},
+  ghost:{ghost:2,dark:2,normal:0,fighting:0,poison:0.5,bug:0.5},
+  dragon:{ice:2,dragon:2,fairy:2,fire:0.5,water:0.5,electric:0.5,grass:0.5},
+  dark:{fighting:2,bug:2,fairy:2,ghost:0.5,dark:0.5,psychic:0},
+  steel:{fire:2,fighting:2,ground:2,normal:0.5,grass:0.5,ice:0.5,flying:0.5,psychic:0.5,bug:0.5,rock:0.5,dragon:0.5,steel:0.5,fairy:0.5,poison:0},
+  fairy:{poison:2,steel:2,fighting:0.5,bug:0.5,dark:0.5,dragon:0}
+};
+
+// ===================== UTILITY FUNCTIONS =====================
+function calcCP(baseAtk, baseDef, baseHP, atkIV, defIV, hpIV, level) {
+  const cpm = CP_MULTIPLIERS[level] || 0.79030001;
+  const cp = Math.floor((baseAtk + atkIV) * Math.pow(baseDef + defIV, 0.5) * Math.pow(baseHP + hpIV, 0.5) * Math.pow(cpm, 2) / 10);
+  return Math.max(10, cp);
+}
+
+function calcHP(baseHP, hpIV, level) {
+  const cpm = CP_MULTIPLIERS[level] || 0.79030001;
+  return Math.max(10, Math.floor((baseHP + hpIV) * cpm));
+}
+
+function getTypeWeaknesses(types) {
+  const effectiveness = {};
+  types.forEach(type => {
+    const defMap = TYPE_EFFECTIVENESS[type] || {};
+    Object.entries(defMap).forEach(([attType, mult]) => {
+      effectiveness[attType] = (effectiveness[attType] || 1) * mult;
+    });
+  });
+  const weaknesses = [], resistances = [], immunities = [];
+  Object.entries(effectiveness).forEach(([type, mult]) => {
+    if (mult >= 2) weaknesses.push({type, mult});
+    else if (mult === 0) immunities.push({type, mult});
+    else if (mult < 1) resistances.push({type, mult});
+  });
+  return { weaknesses, resistances, immunities };
+}
+
+function capitalize(str) { return str ? str.charAt(0).toUpperCase() + str.slice(1) : ''; }
+function padId(id) { return String(id).padStart(4, '0'); }
+
+// ===================== API HELPERS =====================
+const cache = {};
+async function fetchPokemon(nameOrId) {
+  const key = String(nameOrId).toLowerCase();
+  if (cache[key]) return cache[key];
+  const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${key}`);
+  if (!res.ok) throw new Error('Not found');
+  const data = await res.json();
+  cache[key] = data;
+  return data;
+}
+
+async function fetchSpecies(nameOrId) {
+  const key = `species_${nameOrId}`;
+  if (cache[key]) return cache[key];
+  const res = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${nameOrId}`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  cache[key] = data;
+  return data;
+}
+
+async function fetchEvolutionChain(url) {
+  if (cache[url]) return cache[url];
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = await res.json();
+  cache[url] = data;
+  return data;
+}
+
+async function fetchPokemonList(limit = 251) {
+  const key = `list_${limit}`;
+  if (cache[key]) return cache[key];
+  const res = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=0`);
+  const data = await res.json();
+  cache[key] = data.results.map((p, i) => ({ name: p.name, id: i + 1 }));
+  return cache[key];
+}
+
+function getGoStats(pokemon) {
+  const stats = {};
+  pokemon.stats.forEach(s => {
+    stats[s.stat.name] = s.base_stat;
+  });
+  // Pokémon GO uses modified base stats
+  const attack = Math.round(2 * (stats['attack'] * 7/8 + stats['special-attack'] * 1/8) + (stats['speed'] > 0 ? Math.floor(stats['speed'] / 2) : 0) / 4);
+  const defense = Math.round(2 * (stats['defense'] * 7/8 + stats['special-defense'] * 1/8) + (stats['speed'] > 0 ? Math.floor(stats['speed'] / 2) : 0) / 4);
+  const hp = Math.floor(stats['hp'] * 1.75 + 50);
+  // Simplified but more accurate GO formula
+  const goAtk = Math.max(1, Math.round((stats['attack'] + stats['special-attack']) * 0.875 + stats['speed'] * 0.125));
+  const goDef = Math.max(1, Math.round((stats['defense'] + stats['special-defense']) * 0.875 + stats['speed'] * 0.125));
+  const goHP = Math.max(1, Math.floor(stats['hp'] * 1.75 + 50));
+  return { attack: goAtk, defense: goDef, hp: goHP, rawStats: stats };
+}
+
+// ===================== SMALL COMPONENTS =====================
+function TypeBadge({ type, size = 'sm' }) {
+  const color = TYPE_COLORS[type] || '#888';
+  const pad = size === 'lg' ? 'px-3 py-1 text-xs' : 'px-2 py-0.5 text-xs';
+  return (
+    <span className={`type-badge ${pad} font-bold`} style={{ background: color + '33', color: color, border: `1px solid ${color}66` }}>
+      {capitalize(type)}
+    </span>
+  );
+}
+
+function StatBar({ label, value, max = 300, color = '#818cf8' }) {
+  const pct = Math.min(100, (value / max) * 100);
+  const getColor = (v) => v >= 200 ? '#34d399' : v >= 150 ? '#60a5fa' : v >= 100 ? '#818cf8' : v >= 50 ? '#fbbf24' : '#f87171';
+  const barColor = color === 'auto' ? getColor(value) : color;
+  return (
+    <div className="flex items-center gap-2 mb-1.5">
+      <span className="text-gray-400 text-xs w-20 shrink-0">{label}</span>
+      <div className="stat-bar flex-1">
+        <div className="stat-fill" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${barColor}aa, ${barColor})` }} />
+      </div>
+      <span className="text-white text-xs w-8 text-right font-semibold">{value}</span>
+    </div>
+  );
+}
+
+function Toggle({ value, onChange, label, icon }) {
+  return (
+    <button onClick={() => onChange(!value)}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${value ? 'bg-indigo-600 text-white' : 'bg-white/10 text-gray-400 hover:bg-white/15'}`}>
+      {icon && <span>{icon}</span>}
+      {label}
+    </button>
+  );
+}
+
+function LoadingSpinner({ size = 'md' }) {
+  const s = size === 'sm' ? 'w-6 h-6' : size === 'lg' ? 'w-16 h-16' : 'w-10 h-10';
+  return (
+    <div className={`${s} border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin`} />
+  );
+}
+
+function PokemonImage({ pokemon, isShiny, is3D, className = '', size = 96 }) {
+  const [imgError, setImgError] = React.useState(false);
+  const [loaded, setLoaded] = React.useState(false);
+
+  let src = null;
+  if (!imgError) {
+    if (is3D) {
+      src = isShiny
+        ? pokemon?.sprites?.other?.home?.front_shiny
+        : pokemon?.sprites?.other?.home?.front_default;
+    }
+    if (!src || imgError) {
+      src = isShiny
+        ? pokemon?.sprites?.other?.['official-artwork']?.front_shiny
+        : pokemon?.sprites?.other?.['official-artwork']?.front_default;
+    }
+    if (!src) {
+      src = isShiny ? pokemon?.sprites?.front_shiny : pokemon?.sprites?.front_default;
+    }
+  }
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      {!loaded && <LoadingSpinner size="sm" />}
+      {src && (
+        <img src={src} alt={pokemon?.name || ''} width={size} height={size}
+          className={`pokemon-img ${isShiny ? 'shiny-glow' : ''} ${className} ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          style={{ transition: 'opacity 0.3s', objectFit: 'contain', width: size, height: size }}
+          onLoad={() => setLoaded(true)}
+          onError={() => { setImgError(true); setLoaded(true); }} />
+      )}
+      {(!src || imgError) && loaded && (
+        <div className="flex items-center justify-center text-gray-600" style={{ width: size, height: size }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===================== SEARCH BAR =====================
+function SearchBar({ onSelect, placeholder = "Search Pokémon by name or ID..." }) {
+  const [query, setQuery] = React.useState('');
+  const [results, setResults] = React.useState([]);
+  const [allPokemon, setAllPokemon] = React.useState([]);
+  const [loading, setLoading] = React.useState(false);
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    fetchPokemonList(905).then(setAllPokemon).catch(() => {});
+  }, []);
+
+  React.useEffect(() => {
+    if (!query.trim()) { setResults([]); setOpen(false); return; }
+    const q = query.toLowerCase().trim();
+    const filtered = allPokemon.filter(p =>
+      p.name.includes(q) || String(p.id).includes(q)
+    ).slice(0, 12);
+    setResults(filtered);
+    setOpen(filtered.length > 0);
+  }, [query, allPokemon]);
+
+  React.useEffect(() => {
+    const handleClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  const handleSelect = (p) => {
+    setQuery('');
+    setOpen(false);
+    onSelect(p.name);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (query.trim()) { onSelect(query.trim().toLowerCase()); setQuery(''); setOpen(false); }
+  };
+
+  return (
+    <div ref={ref} className="relative w-full max-w-xl">
+      <form onSubmit={handleSubmit} className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+        <input type="text" value={query} onChange={e => setQuery(e.target.value)}
+          onFocus={() => results.length > 0 && setOpen(true)}
+          placeholder={placeholder}
+          className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white/15 transition-all duration-200" />
+      </form>
+      {open && (
+        <div className="absolute top-full mt-2 w-full glass-dark rounded-xl overflow-hidden search-dropdown animate-fade-in shadow-2xl">
+          {results.map(p => (
+            <button key={p.id} onClick={() => handleSelect(p)}
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/10 transition-colors text-left">
+              <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`}
+                width="32" height="32" className="object-contain" alt="" />
+              <span className="text-white text-sm font-medium">{capitalize(p.name)}</span>
+              <span className="ml-auto text-gray-500 text-xs">#{padId(p.id)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===================== CP CALCULATOR PANEL =====================
+function CPCalculator({ pokemon }) {
+  const goStats = React.useMemo(() => pokemon ? getGoStats(pokemon) : null, [pokemon]);
+  const [level, setLevel] = React.useState(40);
+  const [atkIV, setAtkIV] = React.useState(15);
+  const [defIV, setDefIV] = React.useState(15);
+  const [hpIV, setHpIV] = React.useState(15);
+
+  const levelOptions = React.useMemo(() => {
+    const opts = [];
+    for (let i = 1; i <= 50; i += 0.5) opts.push(i);
+    return opts;
+  }, []);
+
+  const cp = React.useMemo(() => {
+    if (!goStats) return 0;
+    return calcCP(goStats.attack, goStats.defense, goStats.hp, atkIV, defIV, hpIV, level);
+  }, [goStats, level, atkIV, defIV, hpIV]);
+
+  const hp = React.useMemo(() => {
+    if (!goStats) return 0;
+    return calcHP(goStats.hp, hpIV, level);
+  }, [goStats, hpIV, level]);
+
+  const maxCP = React.useMemo(() => {
+    if (!goStats) return 0;
+    return calcCP(goStats.attack, goStats.defense, goStats.hp, 15, 15, 15, 50);
+  }, [goStats]);
+
+  const cpPct = maxCP > 0 ? Math.min(100, (cp / maxCP) * 100) : 0;
+
+  if (!pokemon) return (
+    <div className="flex flex-col items-center justify-center h-48 text-gray-600 gap-3">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/>
+      </svg>
+      <p className="text-sm">Select a Pokémon to calculate CP</p>
+    </div>
+  );
+
+  return (
+    <div className="animate-slide-up space-y-4">
+      <div className="cp-display rounded-2xl p-5 text-center">
+        <p className="text-gray-400 text-xs uppercase tracking-widest mb-1">Combat Power</p>
+        <p className="text-6xl font-black text-white tracking-tight">{cp.toLocaleString()}</p>
+        <div className="mt-3 stat-bar max-w-xs mx-auto">
+          <div className="stat-fill" style={{ width: `${cpPct}%`, background: 'linear-gradient(90deg, #6366f1, #a855f7, #ec4899)' }} />
+        </div>
+        <p className="text-gray-500 text-xs mt-1">{cpPct.toFixed(1)}% of max CP ({maxCP.toLocaleString()})</p>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center">
+        {[['ATK',goStats.attack + atkIV],['DEF',goStats.defense + defIV],['HP',hp]].map(([l,v]) => (
+          <div key={l} className="glass rounded-xl p-2.5">
+            <p className="text-gray-400 text-xs">{l}</p>
+            <p className="text-white font-bold text-lg">{v}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Level Slider */}
+      <div className="glass rounded-xl p-4 space-y-2">
+        <div className="flex justify-between items-center">
+          <label className="text-gray-300 text-sm font-semibold">Level</label>
+          <span className="text-indigo-400 font-bold text-sm bg-indigo-500/20 px-2 py-0.5 rounded-lg">{level}</span>
+        </div>
+        <input type="range" min="1" max="50" step="0.5" value={level}
+          onChange={e => setLevel(parseFloat(e.target.value))}
+          className="slider-thumb w-full"
+          style={{ background: `linear-gradient(90deg, #6366f1 ${((level-1)/49)*100}%, rgba(255,255,255,0.1) ${((level-1)/49)*100}%)` }} />
+        <div className="flex justify-between text-gray-600 text-xs"><span>1</span><span>25</span><span>50</span></div>
+      </div>
+
+      {/* IV Sliders */}
+      {[['Attack IV', atkIV, setAtkIV, '#f87171'],['Defense IV', defIV, setDefIV, '#60a5fa'],['HP IV', hpIV, setHpIV, '#34d399']].map(([label, val, setter, color]) => (
+        <div key={label} className="glass rounded-xl p-4 space-y-2">
+          <div className="flex justify-between items-center">
+            <label className="text-gray-300 text-sm font-semibold">{label}</label>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-0.5">
+                {[...Array(16)].map((_, i) => (
+                  <div key={i} className="w-1.5 h-3 rounded-sm transition-all" style={{ background: i <= val ? color : 'rgba(255,255,255,0.1)' }} />
+                ))}
+              </div>
+              <span className="font-bold text-sm w-5 text-right" style={{ color }}>{val}</span>
+            </div>
+          </div>
+          <input type="range" min="0" max="15" step="1" value={val}
+            onChange={e => setter(parseInt(e.target.value))}
+            className="slider-thumb w-full"
+            style={{ background: `linear-gradient(90deg, ${color} ${(val/15)*100}%, rgba(255,255,255,0.1) ${(val/15)*100}%)` }} />
+          <div className="flex justify-between text-gray-600 text-xs"><span>0</span><span>15</span></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ===================== EVOLUTION CHAIN =====================
+function EvoNode({ name, isShiny, is3D, onSelect, isActive }) {
+  const [poke, setPoke] = React.useState(null);
+  React.useEffect(() => {
+    fetchPokemon(name).then(setPoke).catch(() => {});
+  }, [name]);
+  return (
+    <button onClick={() => onSelect(name)}
+      className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200 hover:bg-white/10 ${isActive ? 'bg-white/15 ring-2 ring-indigo-500' : ''}`}>
+      {poke ? (
+        <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={64} />
+      ) : (
+        <div className="w-16 h-16 flex items-center justify-center"><LoadingSpinner size="sm" /></div>
+      )}
+      <span className="text-gray-300 text-xs font-medium">{capitalize(name)}</span>
+      {poke && <span className="text-gray-600 text-xs">#{padId(poke.id)}</span>}
+    </button>
+  );
+}
+
+function EvoArrow({ detail }) {
+  return (
+    <div className="flex flex-col items-center justify-center px-1 min-w-[60px]">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-indigo-400 -rotate-90 md:rotate-0">
+        <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+      {detail && <span className="text-gray-600 text-xs text-center mt-0.5 max-w-[60px] leading-tight">{detail}</span>}
+    </div>
+  );
+}
+
+function parseEvoChain(chain) {
+  const stages = [];
+  const traverse = (node, stage) => {
+    if (!stages[stage]) stages[stage] = [];
+    const detail = node.evolution_details?.[0];
+    let req = '';
+    if (detail) {
+      if (detail.min_level) req = `Lv.${detail.min_level}`;
+      else if (detail.item) req = capitalize(detail.item.name.replace(/-/g,' '));
+      else if (detail.held_item) req = capitalize(detail.held_item.name.replace(/-/g,' '));
+      else if (detail.trigger?.name === 'trade') req = 'Trade';
+      else if (detail.min_happiness) req = `Happy (${detail.min_happiness})`;
+      else if (detail.known_move) req = capitalize(detail.known_move.name.replace(/-/g,' '));
+      else if (detail.location) req = 'Location';
+      else req = capitalize((detail.trigger?.name || '').replace(/-/g,' '));
+    }
+    stages[stage].push({ name: node.species.name, req, hasEvos: node.evolves_to.length > 0 });
+    node.evolves_to.forEach(n => traverse(n, stage + 1));
+  };
+  traverse(chain, 0);
+  return stages;
+}
+
+function EvolutionChain({ speciesName, isShiny, is3D, onSelect, activeName }) {
+  const [stages, setStages] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!speciesName) return;
+    setLoading(true); setStages(null);
+    fetchSpecies(speciesName)
+      .then(sp => sp ? fetchEvolutionChain(sp.evolution_chain.url) : null)
+      .then(chain => { if (chain) setStages(parseEvoChain(chain.chain)); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [speciesName]);
+
+  if (loading) return <div className="flex justify-center py-4"><LoadingSpinner /></div>;
+  if (!stages) return null;
+  if (stages.length <= 1 && stages[0]?.length <= 1) return (
+    <div className="text-gray-600 text-sm text-center py-2">No evolutions</div>
+  );
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1 py-2">
+      {stages.map((stage, si) => (
+        <React.Fragment key={si}>
+          {si > 0 && (
+            <div className="flex flex-col gap-2">
+              {stage.map(node => node.req && (
+                <EvoArrow key={node.name} detail={node.req} />
+              ))}
+              {!stage.some(n => n.req) && <EvoArrow detail="" />}
+            </div>
+          )}
+          <div className={`flex flex-col gap-2 ${stage.length > 1 ? 'justify-center' : ''}`}>
+            {stage.map(node => (
+              <EvoNode key={node.name} name={node.name} isShiny={isShiny} is3D={is3D}
+                onSelect={onSelect} isActive={node.name === activeName} />
+            ))}
+          </div>
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+// ===================== DETAIL PANEL =====================
+function DetailPanel({ pokemon, species, isShiny, is3D }) {
+  const goStats = React.useMemo(() => pokemon ? getGoStats(pokemon) : null, [pokemon]);
+  const types = pokemon?.types?.map(t => t.type.name) || [];
+  const { weaknesses, resistances, immunities } = getTypeWeaknesses(types);
+
+  if (!pokemon) return null;
+
+  const flavorText = species?.flavor_text_entries
+    ?.find(f => f.language.name === 'en')
+    ?.flavor_text?.replace(/\f|\n/g, ' ') || '';
+
+  return (
+    <div className="animate-slide-up space-y-4">
+      {/* Types */}
+      <div className="flex gap-2 flex-wrap">
+        {types.map(t => <TypeBadge key={t} type={t} size="lg" />)}
+      </div>
+
+      {/* Flavor text */}
+      {flavorText && (
+        <p className="text-gray-400 text-sm leading-relaxed italic">"{flavorText}"</p>
+      )}
+
+      {/* Physical */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="glass rounded-xl p-3 text-center">
+          <p className="text-gray-500 text-xs">Height</p>
+          <p className="text-white font-bold">{(pokemon.height / 10).toFixed(1)} m</p>
+        </div>
+        <div className="glass rounded-xl p-3 text-center">
+          <p className="text-gray-500 text-xs">Weight</p>
+          <p className="text-white font-bold">{(pokemon.weight / 10).toFixed(1)} kg</p>
+        </div>
+      </div>
+
+      {/* GO Base Stats */}
+      <div className="glass rounded-xl p-4">
+        <p className="text-gray-400 text-xs uppercase tracking-widest mb-3 font-semibold">Pokémon GO Base Stats</p>
+        <StatBar label="Attack" value={goStats.attack} max={300} color="auto" />
+        <StatBar label="Defense" value={goStats.defense} max={300} color="auto" />
+        <StatBar label="Stamina" value={goStats.hp} max={500} color="auto" />
+      </div>
+
+      {/* Main game stats */}
+      <div className="glass rounded-xl p-4">
+        <p className="text-gray-400 text-xs uppercase tracking-widest mb-3 font-semibold">Base Stats</p>
+        {pokemon.stats.map(s => (
+          <StatBar key={s.stat.name} label={capitalize(s.stat.name.replace('-',' '))} value={s.base_stat} max={255} color="auto" />
+        ))}
+        <div className="border-t border-white/10 mt-2 pt-2">
+          <StatBar label="Total" value={pokemon.stats.reduce((a,b) => a + b.base_stat, 0)} max={720} color="#f59e0b" />
+        </div>
+      </div>
+
+      {/* Type Chart */}
+      <div className="glass rounded-xl p-4 space-y-3">
+        <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold">Type Match-Ups</p>
+        {weaknesses.length > 0 && (
+          <div>
+            <p className="text-red-400 text-xs mb-1.5 font-semibold">Weak Against</p>
+            <div className="flex flex-wrap gap-1.5">
+              {weaknesses.map(({type, mult}) => (
+                <div key={type} className="flex items-center gap-1">
+                  <TypeBadge type={type} />
+                  <span className="text-red-400 text-xs font-bold">{mult}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {resistances.length > 0 && (
+          <div>
+            <p className="text-green-400 text-xs mb-1.5 font-semibold">Resistant To</p>
+            <div className="flex flex-wrap gap-1.5">
+              {resistances.map(({type, mult}) => (
+                <div key={type} className="flex items-center gap-1">
+                  <TypeBadge type={type} />
+                  <span className="text-green-400 text-xs font-bold">{mult}x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {immunities.length > 0 && (
+          <div>
+            <p className="text-gray-400 text-xs mb-1.5 font-semibold">Immune To</p>
+            <div className="flex flex-wrap gap-1.5">
+              {immunities.map(({type}) => (
+                <div key={type} className="flex items-center gap-1">
+                  <TypeBadge type={type} />
+                  <span className="text-gray-400 text-xs font-bold">0x</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ===================== COMPARISON MODE =====================
+function ComparePanel({ isShiny, is3D }) {
+  const [pokeA, setPokeA] = React.useState(null);
+  const [pokeB, setPokeB] = React.useState(null);
+  const [loadingA, setLoadingA] = React.useState(false);
+  const [loadingB, setLoadingB] = React.useState(false);
+
+  const loadPoke = (nameOrId, setter, setLoading) => {
+    setLoading(true);
+    fetchPokemon(nameOrId).then(setter).catch(() => setter(null)).finally(() => setLoading(false));
+  };
+
+  const statsA = pokeA ? getGoStats(pokeA) : null;
+  const statsB = pokeB ? getGoStats(pokeB) : null;
+  const maxCPA = statsA ? calcCP(statsA.attack, statsA.defense, statsA.hp, 15,15,15,50) : 0;
+  const maxCPB = statsB ? calcCP(statsB.attack, statsB.defense, statsB.hp, 15,15,15,50) : 0;
+  const globalMax = Math.max(maxCPA, maxCPB, 1);
+
+  const statKeys = ['attack','defense','special-attack','special-defense','speed','hp'];
+
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="grid grid-cols-2 gap-3">
+        {[['A', pokeA, setPokeA, loadingA, setLoadingA, statsA, maxCPA],
+          ['B', pokeB, setPokeB, loadingB, setLoadingB, statsB, maxCPB]].map(([slot, poke, setPoke, loading, setLoading, stats, maxCP]) => (
+          <div key={slot} className="glass rounded-2xl p-4 space-y-3">
+            <SearchBar onSelect={(name) => loadPoke(name, setPoke, setLoading)} placeholder={`Search Pokémon ${slot}...`} />
+            {loading && <div className="flex justify-center py-4"><LoadingSpinner /></div>}
+            {poke && !loading && (
+              <div className="flex flex-col items-center gap-2 animate-fade-in">
+                <PokemonImage pokemon={poke} isShiny={isShiny} is3D={is3D} size={100} />
+                <p className="text-white font-bold text-lg">{capitalize(poke.name)}</p>
+                <p className="text-gray-500 text-xs">#{padId(poke.id)}</p>
+                <div className="flex gap-1 flex-wrap justify-center">
+                  {poke.types.map(t => <TypeBadge key={t.type.name} type={t.type.name} />)}
+                </div>
+                <div className="w-full glass rounded-xl p-3 text-center">
+                  <p className="text-gray-500 text-xs">Max CP (Lv50, 15/15/15)</p>
+                  <p className="text-2xl font-black text-indigo-400">{maxCP.toLocaleString()}</p>
+                </div>
+              </div>
+            )}
+            {!poke && !loading && (
+              <div className="flex flex-col items-center justify-center py-8 text-gray-700">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+                <p className="text-sm mt-2">Select Pokémon {slot}</p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {pokeA && pokeB && (
+        <div className="glass rounded-2xl p-4 space-y-2 animate-slide-up">
+          <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3">Stat Comparison</p>
+
+          {/* GO Stats */}
+          <p className="text-indigo-400 text-xs font-semibold mt-2">Pokémon GO Stats</p>
+          {[['GO Attack', statsA?.attack, statsB?.attack],
+            ['GO Defense', statsA?.defense, statsB?.defense],
+            ['GO Stamina', statsA?.hp, statsB?.hp],
+            ['Max CP', maxCPA, maxCPB]].map(([label, vA, vB]) => {
+            const max = Math.max(vA||0, vB||0, 1);
+            const pctA = ((vA||0)/max)*100, pctB = ((vB||0)/max)*100;
+            const winner = vA > vB ? 'A' : vA < vB ? 'B' : null;
+            return (
+              <div key={label} className="flex items-center gap-2 mb-1.5">
+                <span className={`text-xs w-5 text-right font-bold ${winner==='A'?'text-blue-400':'text-gray-500'}`}>{vA?.toLocaleString()}</span>
+                <div className="flex-1 flex gap-0.5">
+                  <div className="stat-bar flex-1">
+                    <div className="stat-fill" style={{ width:`${pctA}%`, background: winner==='A'?'linear-gradient(90deg,#6366f1,#818cf8)':'linear-gradient(90deg,#4b5563,#6b7280)', marginLeft:'auto' }} />
+                  </div>
+                  <div className="text-gray-600 text-xs w-16 text-center shrink-0">{label}</div>
+                  <div className="stat-bar flex-1">
+                    <div className="stat-fill" style={{ width:`${pctB}%`, background: winner==='B'?'linear-gradient(90deg,#ec4899,#f43f5e)':'linear-gradient(90deg,#4b5563,#6b7280)' }} />
+                  </div>
+                </div>
+                <span className={`text-xs w-5 font-bold ${winner==='B'?'text-pink-400':'text-gray-500'}`}>{vB?.toLocaleString()}</span>
+              </div>
+            );
+          })}
+
+          {/* Base stats */}
+          <p className="text-purple-400 text-xs font-semibold mt-3">Base Stats</p>
+          {statKeys.map(statKey => {
+            const vA = statsA?.rawStats?.[statKey] || 0;
+            const vB = statsB?.rawStats?.[statKey] || 0;
+            const max = Math.max(vA, vB, 1);
+            const pctA = (vA/max)*100, pctB = (vB/max)*100;
+            const winner = vA > vB ? 'A' : vA < vB ? 'B' : null;
+            return (
+              <div key={statKey} className="flex items-center gap-2 mb-1.5">
+                <span className={`text-xs w-5 text-right font-bold ${winner==='A'?'text-blue-400':'text-gray-500'}`}>{vA}</span>
+                <div className="flex-1 flex gap-0.5">
+                  <div className="stat-bar flex-1">
+                    <div className="stat-fill" style={{ width:`${pctA}%`, background: winner==='A'?'linear-gradient(90deg,#6366f1,#818cf8)':'linear-gradient(90deg,#4b5563,#6b7280)', marginLeft:'auto' }} />
+                  </div>
+                  <div className="text-gray-600 text-xs w-24 text-center shrink-0">{capitalize(statKey.replace('-',' '))}</div>
+                  <div className="stat-bar flex-1">
+                    <div className="stat-fill" style={{ width:`${pctB}%`, background: winner==='B'?'linear-gradient(90deg,#ec4899,#f43f5e)':'linear-gradient(90deg,#4b5563,#6b7280)' }} />
+                  </div>
+                </div>
+                <span className={`text-xs w-5 font-bold ${winner==='B'?'text-pink-400':'text-gray-500'}`}>{vB}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ===================== POKEDEX GRID =====================
+function PokedexGrid({ onSelect, activeName }) {
+  const [pokemon, setPokemon] = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [page, setPage] = React.useState(0);
+  const [filter, setFilter] = React.useState('');
+  const [typeFilter, setTypeFilter] = React.useState('');
+  const PER_PAGE = 40;
+
+  React.useEffect(() => {
+    fetchPokemonList(905).then(list => { setPokemon(list); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const filtered = React.useMemo(() => {
+    if (!filter && !typeFilter) return pokemon;
+    return pokemon.filter(p => {
+      const matchName = !filter || p.name.includes(filter.toLowerCase()) || String(p.id).includes(filter);
+      return matchName;
+    });
+  }, [pokemon, filter, typeFilter]);
+
+  const pages = Math.ceil(filtered.length / PER_PAGE);
+  const visible = filtered.slice(page * PER_PAGE, (page+1) * PER_PAGE);
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-400">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+        </div>
+        <input value={filter} onChange={e => { setFilter(e.target.value); setPage(0); }}
+          placeholder="Filter..." className="w-full pl-9 pr-3 py-2 bg-white/10 border border-white/15 rounded-lg text-white text-sm placeholder-gray-600 focus:outline-none focus:border-indigo-500 transition-colors" />
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-8"><LoadingSpinner /></div>
+      ) : (
+        <>
+          <div className="pokedex-grid max-h-[480px] overflow-y-auto pr-1">
+            {visible.map(p => (
+              <button key={p.id} onClick={() => onSelect(p.name)}
+                className={`card-hover glass rounded-xl p-2 flex flex-col items-center gap-1 transition-all duration-200 ${activeName === p.name ? 'ring-2 ring-indigo-500 bg-indigo-500/20' : 'hover:bg-white/10'}`}>
+                <img src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`}
+                  width="56" height="56" className="object-contain" alt={p.name} loading="lazy" />
+                <span className="text-gray-300 text-xs font-medium leading-tight text-center">{capitalize(p.name)}</span>
+                <span className="text-gray-600 text-xs">#{padId(p.id)}</span>
+              </button>
+            ))}
+          </div>
+          {pages > 1 && (
+            <div className="flex items-center justify-between gap-2">
+              <button onClick={() => setPage(p => Math.max(0, p-1))} disabled={page===0}
+                className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">← Prev</button>
+              <span className="text-gray-500 text-xs">{page+1} / {pages}</span>
+              <button onClick={() => setPage(p => Math.min(pages-1, p+1))} disabled={page===pages-1}
+                className="px-3 py-1.5 glass rounded-lg text-xs text-gray-400 disabled:opacity-30 hover:text-white transition-colors">Next →</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ===================== MAIN POKEMON CARD =====================
+function PokemonCard({ pokemon, species, isShiny, is3D, onToggleShiny, onToggle3D }) {
+  const goStats = getGoStats(pokemon);
+  const types = pokemon.types.map(t => t.type.name);
+  const mainType = types[0];
+  const typeColor = TYPE_COLORS[mainType] || '#6366f1';
+
+  return (
+    <div className="glass-dark rounded-2xl overflow-hidden animate-slide-up relative" style={{ border: `1px solid ${typeColor}33` }}>
+      {/* Header gradient */}
+      <div className="relative p-5 pb-2" style={{ background: `linear-gradient(135deg, ${typeColor}22, transparent)` }}>
+        <div className="flex justify-between items-start">
+          <div>
+            <p className="text-gray-500 text-xs font-medium">#{padId(pokemon.id)}</p>
+            <h2 className="text-white text-2xl font-black mt-0.5">{capitalize(pokemon.name)}</h2>
+            {species?.genera?.find(g => g.language.name === 'en') && (
+              <p className="text-gray-500 text-xs">{species.genera.find(g => g.language.name === 'en').genus}</p>
+            )}
+            <div className="flex gap-1.5 mt-2 flex-wrap">
+              {types.map(t => <TypeBadge key={t} type={t} size="lg" />)}
+            </div>
+          </div>
+          <div className="flex flex-col gap-1.5 items-end">
+            <Toggle value={isShiny} onChange={onToggleShiny} label="✨ Shiny" />
+            <Toggle value={is3D} onChange={onToggle3D} label="🎮 3D" />
+          </div>
+        </div>
+
+        {/* Sprite */}
+        <div className="flex justify-center mt-2">
+          <div className="relative">
+            {/* Background glow */}
+            <div className="absolute inset-0 rounded-full blur-3xl opacity-20" style={{ background: typeColor }} />
+            <PokemonImage pokemon={pokemon} isShiny={isShiny} is3D={is3D} size={160} className="relative z-10" />
+          </div>
+        </div>
+
+        {/* Shiny indicator */}
+        {isShiny && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2">
+            <span className="text-xs bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-full px-3 py-0.5 font-semibold">✨ Shiny</span>
+          </div>
+        )}
+      </div>
+
+      {/* CP Preview */}
+      <div className="px-5 pb-4">
+        <div className="grid grid-cols-3 gap-2 text-center mt-2">
+          {[['GO ATK', goStats.attack, '#f87171'],['GO DEF', goStats.defense, '#60a5fa'],['STA', goStats.hp, '#34d399']].map(([l,v,c]) => (
+            <div key={l} className="rounded-lg p-2" style={{ background: c+'15', border: `1px solid ${c}33` }}>
+              <p className="text-xs font-semibold" style={{ color: c }}>{l}</p>
+              <p className="text-white font-bold text-lg">{v}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-center">
+          <p className="text-gray-600 text-xs">Max CP (Lv50 15/15/15)</p>
+          <p className="text-indigo-400 font-black text-2xl">{calcCP(goStats.attack, goStats.defense, goStats.hp, 15,15,15,50).toLocaleString()}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================== MAIN APP =====================
+function App() {
+  const [activePokemon, setActivePokemon] = React.useState(null);
+  const [activeSpecies, setActiveSpecies] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [error, setError] = React.useState(null);
+  const [isShiny, setIsShiny] = React.useState(false);
+  const [is3D, setIs3D] = React.useState(true);
+  const [activeTab, setActiveTab] = React.useState('info');
+  const [mode, setMode] = React.useState('dex'); // 'dex' | 'compare'
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [showDex, setShowDex] = React.useState(false);
+
+  const loadPokemon = React.useCallback(async (nameOrId) => {
+    setLoading(true);
+    setError(null);
+    setIsShiny(false);
+    try {
+      const poke = await fetchPokemon(nameOrId);
+      setActivePokemon(poke);
+      setActiveTab('info');
+      const sp = await fetchSpecies(poke.name).catch(() => null);
+      setActiveSpecies(sp);
+    } catch (e) {
+      setError(`Could not find "${nameOrId}". Try a different name or ID.`);
+      setActivePokemon(null);
+      setActiveSpecies(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Load a default pokemon on startup
+  React.useEffect(() => { loadPokemon('mewtwo'); }, []);
+
+  const tabs = [
+    { id: 'info', label: 'Info', icon: '📋' },
+    { id: 'cp', label: 'CP Calc', icon: '⚡' },
+    { id: 'evo', label: 'Evolution', icon: '🔄' },
+  ];
+
+  return (
+    <div className="min-h-screen text-white" style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #0d0d1a 50%, #0a0f1a 100%)' }}>
+      {/* Header */}
+      <header className="glass-dark sticky top-0 z-50 px-4 py-3">
+        <div className="max-w-7xl mx-auto flex items-center gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+              <div className="w-3 h-3 rounded-full bg-white" />
+            </div>
+            <div className="hidden sm:block">
+              <h1 className="text-white font-black text-sm leading-none">Pokémon GO</h1>
+              <p className="text-indigo-400 text-xs font-semibold">Dex &amp; CP Calculator</p>
+            </div>
+          </div>
+
+          {/* Search */}
+          <div className="flex-1 max-w-md">
+            <SearchBar onSelect={loadPokemon} />
+          </div>
+
+          {/* Mode toggle */}
+          <div className="flex gap-2 shrink-0">
+            <button onClick={() => setMode('dex')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='dex' ? 'bg-indigo-600 text-white' : 'glass text-gray-400 hover:text-white'}`}>
+              📖 Dex
+            </button>
+            <button onClick={() => setMode('compare')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${mode==='compare' ? 'bg-pink-600 text-white' : 'glass text-gray-400 hover:text-white'}`}>
+              ⚖️ Compare
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {mode === 'compare' ? (
+        <main className="max-w-5xl mx-auto px-4 py-6">
+          <div className="mb-4">
+            <h2 className="text-white font-black text-xl">Side-by-Side Comparison</h2>
+            <p className="text-gray-500 text-sm">Compare stats, CP, and types between two Pokémon</p>
+          </div>
+          <ComparePanel isShiny={isShiny} is3D={is3D} />
+        </main>
+      ) : (
+        <main className="max-w-7xl mx-auto px-4 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            {/* Left: Pokédex list (collapsible on mobile) */}
+            <div className="lg:col-span-1">
+              <div className="glass-dark rounded-2xl p-4">
+                <button onClick={() => setShowDex(!showDex)}
+                  className="flex items-center justify-between w-full lg:cursor-default mb-3">
+                  <h3 className="text-white font-bold text-sm uppercase tracking-widest">Pokédex</h3>
+                  <span className="lg:hidden text-gray-400 text-xs">{showDex ? '▲ Hide' : '▼ Show'}</span>
+                </button>
+                <div className={`${showDex ? 'block' : 'hidden'} lg:block`}>
+                  <PokedexGrid onSelect={loadPokemon} activeName={activePokemon?.name} />
+                </div>
+              </div>
+            </div>
+
+            {/* Center: Pokémon card + tabs */}
+            <div className="lg:col-span-2 space-y-4">
+              {loading && (
+                <div className="glass-dark rounded-2xl p-12 flex flex-col items-center gap-4">
+                  <LoadingSpinner size="lg" />
+                  <p className="text-gray-500 text-sm">Loading Pokémon data...</p>
+                </div>
+              )}
+              {error && !loading && (
+                <div className="glass-dark rounded-2xl p-8 text-center">
+                  <p className="text-red-400 text-4xl mb-3">😵</p>
+                  <p className="text-red-400 font-semibold">{error}</p>
+                  <p className="text-gray-600 text-sm mt-1">Try searching for "pikachu", "bulbasaur", or a number like "25"</p>
+                </div>
+              )}
+
+              {activePokemon && !loading && (
+                <>
+                  <PokemonCard
+                    pokemon={activePokemon} species={activeSpecies}
+                    isShiny={isShiny} is3D={is3D}
+                    onToggleShiny={setIsShiny} onToggle3D={setIs3D}
+                  />
+
+                  {/* Tabs */}
+                  <div className="glass-dark rounded-2xl overflow-hidden">
+                    <div className="flex border-b border-white/10">
+                      {tabs.map(tab => (
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                          className={`flex-1 py-3 text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-1.5 ${activeTab===tab.id ? 'tab-active text-white' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}>
+                          <span>{tab.icon}</span>
+                          <span>{tab.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="p-5">
+                      {activeTab === 'info' && (
+                        <DetailPanel pokemon={activePokemon} species={activeSpecies} isShiny={isShiny} is3D={is3D} />
+                      )}
+                      {activeTab === 'cp' && (
+                        <CPCalculator pokemon={activePokemon} />
+                      )}
+                      {activeTab === 'evo' && (
+                        <div>
+                          <p className="text-gray-400 text-xs uppercase tracking-widest font-semibold mb-3">Evolution Chain</p>
+                          <EvolutionChain
+                            speciesName={activePokemon.name}
+                            isShiny={isShiny} is3D={is3D}
+                            onSelect={loadPokemon}
+                            activeName={activePokemon.name}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {!activePokemon && !loading && !error && (
+                <div className="glass-dark rounded-2xl p-12 flex flex-col items-center gap-4 text-center">
+                  <div className="text-6xl">🔴</div>
+                  <h3 className="text-white font-bold text-xl">Welcome to GO Dex</h3>
+                  <p className="text-gray-500 text-sm max-w-sm">Search for any Pokémon by name or ID, or browse the Pokédex on the left to get started.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+      )}
+
+      {/* Footer */}
+      <footer className="text-center py-6 text-gray-700 text-xs">
+        <p>Pokémon GO Dex &amp; CP Calculator • Data from <a href="https://pokeapi.co" className="text-indigo-500 hover:text-indigo-400" target="_blank" rel="noopener">PokéAPI</a></p>
+        <p className="mt-1">Not affiliated with Niantic, Inc. or Nintendo</p>
+      </footer>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
