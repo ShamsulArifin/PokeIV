@@ -1,45 +1,62 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #111118;
-  --s1: #1c1c26;
-  --s2: #242430;
-  --s3: #2e2e3d;
-  --border: rgba(255,255,255,0.08);
-  --border2: rgba(255,255,255,0.14);
-  --text: #eeeef5;
-  --muted: #888899;
-  --dim: #555566;
-  --accent: #5b5ef4;
-  --accent-light: #818cf8;
+  /* ── Background layers ── */
+  --bg:  #0b0b0e;          /* true near-black page bg              */
+  --s1:  #141418;          /* card surface (lightest layer)        */
+  --s2:  #1c1c22;          /* nested card / input bg               */
+  --s3:  #26262f;          /* hover states, table headers          */
+  --s4:  #2f2f3a;          /* active states, selected              */
+
+  /* ── Borders ── */
+  --border:  rgba(255,255,255,0.07);   /* subtle dividers      */
+  --border2: rgba(255,255,255,0.13);   /* input / control edges*/
+
+  /* ── Text ── */
+  --text:  #f0f0f6;          /* primary text                       */
+  --muted: #80808f;          /* labels, secondary text             */
+  --dim:   #4a4a5a;          /* placeholders, row numbers          */
+
+  /* ── Accent ── */
+  --accent:       #6c6ef5;   /* primary interactive colour         */
+  --accent-hover: #5a5ce0;
+  --accent-light: #9395f8;   /* lighter accent for values          */
+
+  /* ── Border radii ── */
   --r-sm: 10px;
   --r-md: 14px;
   --r-lg: 18px;
 }
+
 html, body {
-  background: var(--bg); color: var(--text);
+  background: var(--bg);
+  color: var(--text);
   font-family: 'Inter', system-ui, sans-serif;
-  overflow-x: hidden; -webkit-text-size-adjust: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
 }
+
+/* Custom scrollbar */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--s3); border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: var(--s4); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #3a3a48; }
 
-/* ── Cards ─────────────────────────────── */
-.card  { background: var(--s1); border: 1px solid var(--border); border-radius: var(--r-lg); }
-.card2 { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r-md); }
-.card3 { background: var(--s2); border: 1px solid var(--border); border-radius: var(--r-sm); }
+/* ── Cards ──────────────────────────────── */
+.card  { background: var(--s1); border: 1px solid var(--border);  border-radius: var(--r-lg); }
+.card2 { background: var(--s2); border: 1px solid var(--border);  border-radius: var(--r-md); }
+.card3 { background: var(--s2); border: 1px solid var(--border);  border-radius: var(--r-sm); }
 
-/* ── Inputs ────────────────────────────── */
+/* ── Inputs ───────────────────────────── */
 .inp {
   background: var(--s2); border: 1px solid var(--border2); border-radius: var(--r-sm);
   color: var(--text); padding: 9px 12px; font-size: 14px; font-family: inherit;
-  outline: none; width: 100%; transition: border-color .15s;
+  outline: none; width: 100%; transition: border-color .15s, background .15s;
 }
 .inp::placeholder { color: var(--dim); }
-.inp:focus { border-color: var(--accent); }
+.inp:focus { border-color: var(--accent); background: var(--s3); }
 @media (max-width: 640px) { .inp { font-size: 16px !important; } }
 
-/* ── Buttons ───────────────────────────── */
+/* ── Buttons ──────────────────────────── */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 6px;
   padding: 8px 16px; border-radius: var(--r-sm); font-size: 13px; font-weight: 600;
@@ -47,24 +64,25 @@ html, body {
   color: var(--text); cursor: pointer; transition: background .15s, border-color .15s;
   white-space: nowrap;
 }
-.btn:hover { background: var(--s3); }
-.btn.active-blue  { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.active-pink  { background: #be185d; border-color: #be185d; color: #fff; }
-.btn.active-blue:hover { background: #4e51e0; }
-.btn.active-pink:hover { background: #9d174d; }
+.btn:hover { background: var(--s3); border-color: rgba(255,255,255,0.18); }
+.btn.active-blue  { background: var(--accent);       border-color: var(--accent);  color: #fff; }
+.btn.active-pink  { background: #be185d;              border-color: #be185d;        color: #fff; }
+.btn.active-blue:hover  { background: var(--accent-hover); }
+.btn.active-pink:hover  { background: #9d174d; }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn.primary:hover { background: #4e51e0; }
-.btn:disabled { opacity: 0.38; cursor: default; }
+.btn.primary:hover { background: var(--accent-hover); }
+.btn:disabled { opacity: 0.35; cursor: default; }
 @media (max-width: 640px) { .btn { min-height: 38px; } }
 
-/* ── Toggle pill ───────────────────────── */
+/* ── Toggle pill ──────────────────────── */
 .toggle-pill {
-  display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px;
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 13px;
   border-radius: 20px; font-size: 12px; font-weight: 600; font-family: inherit;
   border: 1px solid var(--border2); background: transparent; color: var(--muted);
   cursor: pointer; transition: all .15s;
 }
-.toggle-pill.on { background: rgba(255,255,255,0.1); color: var(--text); border-color: var(--border2); }
+.toggle-pill:hover { border-color: rgba(255,255,255,0.22); color: var(--text); }
+.toggle-pill.on { background: var(--s3); color: var(--text); border-color: rgba(255,255,255,0.22); }
 
 /* ── Tabs ──────────────────────────────── */
 .tab-bar {
@@ -85,8 +103,28 @@ html, body {
   .tab-btn { flex-direction: row; gap: 6px; font-size: 11px; min-width: auto; padding: 13px 16px; }
 }
 
-/* ── Type badge — icon-based, tooltip on hover ─────────────────────────── */
-/* TypeBadge component uses inline styles; this adds tooltip via CSS */
+/* ── Tabs ──────────────────────────────── */
+.tab-bar {
+  display: flex; border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
+  background: var(--s1);
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab-btn {
+  flex: 1; min-width: 52px; padding: 12px 8px; display: flex; flex-direction: column;
+  align-items: center; gap: 3px; font-size: 10px; font-weight: 600; font-family: inherit;
+  color: var(--dim); border: none; border-bottom: 2px solid transparent;
+  background: transparent; cursor: pointer; transition: color .15s, border-color .15s, background .15s;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.tab-btn:hover { color: var(--muted); background: rgba(255,255,255,.03); }
+.tab-btn.active { color: var(--text); }
+@media (min-width: 640px) {
+  .tab-btn { flex-direction: row; gap: 6px; font-size: 11px; min-width: auto; padding: 13px 16px; }
+}
+
+/* ── Type badge — icon-based ───────────────────────────────────────────── */
+/* TypeBadge uses inline styles; tooltip via CSS */
 [data-type-tip] { position: relative; }
 [data-type-tip]:hover::after {
   content: attr(data-type-tip);
@@ -94,35 +132,43 @@ html, body {
   bottom: calc(100% + 5px);
   left: 50%;
   transform: translateX(-50%);
-  background: rgba(10,10,20,.96);
-  color: #eeeef5;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 3px 8px;
-  border-radius: 6px;
-  white-space: nowrap;
-  pointer-events: none;
-  border: 1px solid rgba(255,255,255,.12);
+  background: var(--s3);
+  color: var(--text);
+  font-size: 10px; font-weight: 600;
+  padding: 3px 8px; border-radius: 6px;
+  white-space: nowrap; pointer-events: none;
+  border: 1px solid var(--border2);
   text-transform: capitalize;
-  z-index: 200;
-  letter-spacing: .03em;
+  z-index: 200; letter-spacing: .03em;
+  box-shadow: 0 4px 12px rgba(0,0,0,.5);
 }
 
 /* ── Stat bar ──────────────────────────── */
-.sbar { height: 6px; border-radius: 99px; background: var(--s3); overflow: hidden; }
+.sbar      { height: 6px; border-radius: 99px; background: var(--s3); overflow: hidden; }
 .sbar-fill { height: 100%; border-radius: 99px; transition: width .7s cubic-bezier(.4,0,.2,1); }
 
 /* ── Range slider ──────────────────────── */
 .slider { -webkit-appearance: none; appearance: none; height: 5px; border-radius: 3px; outline: none; cursor: pointer; width: 100%; }
-.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.5); cursor: pointer; }
-.slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: none; box-shadow: 0 1px 4px rgba(0,0,0,0.5); cursor: pointer; }
+.slider::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%; background: var(--text); box-shadow: 0 1px 6px rgba(0,0,0,.6); cursor: pointer; transition: transform .1s; }
+.slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.slider::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--text); border: none; box-shadow: 0 1px 6px rgba(0,0,0,.6); cursor: pointer; }
 
 /* ── Pokémon image ─────────────────────── */
-.pimg { filter: drop-shadow(0 6px 16px rgba(0,0,0,0.55)); transition: transform .25s ease; }
+.pimg       { filter: drop-shadow(0 6px 20px rgba(0,0,0,.7)); transition: transform .25s ease; }
 .pimg:hover { transform: scale(1.04) translateY(-2px); }
-.glow-shiny    { filter: drop-shadow(0 0 16px rgba(251,191,36,.8))  drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
-.glow-shadow   { filter: drop-shadow(0 0 14px rgba(109,40,217,.8))  drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
-.glow-purified { filter: drop-shadow(0 0 12px rgba(6,182,212,.65))  drop-shadow(0 6px 16px rgba(0,0,0,.5)); }
+.glow-shiny    { filter: drop-shadow(0 0 18px rgba(251,191,36,.85)) drop-shadow(0 6px 20px rgba(0,0,0,.7)); }
+.glow-shadow   { filter: drop-shadow(0 0 16px rgba(109,40,217,.85)) drop-shadow(0 6px 20px rgba(0,0,0,.7)); }
+.glow-purified { filter: drop-shadow(0 0 14px rgba(6,182,212,.7))   drop-shadow(0 6px 20px rgba(0,0,0,.7)); }
+
+/* ── Search dropdown ───────────────────── */
+.search-dd {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--s1);
+  border: 1px solid var(--border2);
+  border-radius: var(--r-md); z-index: 999;
+  max-height: 55vh; overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0,0,0,.8);
+}
 
 /* ── Dex grid ──────────────────────────── */
 .dex-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
@@ -131,10 +177,10 @@ html, body {
 .dex-card {
   background: var(--s2); border: 1px solid var(--border); border-radius: var(--r-sm);
   padding: 8px 5px; display: flex; flex-direction: column; align-items: center; gap: 4px;
-  cursor: pointer; transition: background .15s, border-color .15s;
+  cursor: pointer; transition: background .15s, border-color .15s, transform .15s;
 }
-.dex-card:hover { background: var(--s3); border-color: var(--border2); }
-.dex-card.sel { border-color: var(--accent); background: rgba(91,94,244,.12); }
+.dex-card:hover { background: var(--s3); border-color: var(--border2); transform: translateY(-1px); }
+.dex-card.sel { border-color: var(--accent); background: rgba(108,110,245,.14); box-shadow: 0 0 0 1px rgba(108,110,245,.2) inset; }
 
 /* ── Utilities ─────────────────────────── */
 .fade-in  { animation: fadeIn  .25s ease-out; }
@@ -143,12 +189,6 @@ html, body {
 @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
 .spin { animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.search-dd {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-  background: rgba(20,20,30,.98); border: 1px solid var(--border2);
-  border-radius: var(--r-md); z-index: 999; max-height: 55vh; overflow-y: auto;
-  box-shadow: 0 12px 40px rgba(0,0,0,.6); backdrop-filter: blur(12px);
-}
 .overflow-x-auto { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; }
 th, td { text-align: center; }
