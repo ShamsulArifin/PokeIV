@@ -9,9 +9,11 @@ function ComparePanel({ isShiny, is3D }) {
   const loadPoke = async (name, setPoke, setGs, setLd) => {
     setLd(true); setPoke(null); setGs(null);
     try {
-      const p = await fetchPoke(name);
+      let api = name.toLowerCase();
+      const p = await fetchPoke(api);
       setPoke(p);
-      const s = await resolveGoStats(p);
+      const formIdHint = api.toUpperCase().replace(/-/g, '_');
+      const s = await resolveGoStats({ ...p, formId: formIdHint, baseName: api });
       setGs(s);
     } catch {
       setPoke(null); setGs(null);

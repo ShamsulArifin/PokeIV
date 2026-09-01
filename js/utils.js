@@ -97,37 +97,27 @@ const calcHP = (baseSta, staIV, lv) =>
 // calcCP(300, 182, 214, 15, 15, 15, 40) === 4178  ✓  Mewtwo hundo lv40
 // calcCP(300, 182, 214, 15, 15, 15, 20) === 2387  ✓  Mewtwo hundo lv20
 
-// ── GO base stats from PokeAPI ────────────────────────────────────────────
-// The pokemon-go-api provides exact GO base stats at:
-//   https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex.json
-// Format: { stats: { attack, defense, stamina } }
+// ── GO base stats ─────────────────────────────────────────────────────────
+// Primary source: pokemon-go-api pokedex (loaded once via fetchList() in api.js).
+// The goPokedexByFormId / goPokedexByName maps are populated there.
+// getGoStatsFromCache(formId) does a synchronous lookup into those maps.
 //
-// PokeAPI (pokeapi.co) also provides GO stats via the same field names
-// when you fetch /pokemon/{name}:
-//   poke.stats where stat.name matches 'attack','defense','hp'
-// BUT those are the main-game stats, NOT the GO base stats.
-//
-// We use the PokeAPI main-game stats as a fallback approximation only.
-// The pokemon-go-api endpoint is the authoritative source.
+// Fallback: per-pokemon fetch from the pokemon-go-api individual endpoint.
+const _goStatsFetchCache = {};
 
-const _goStatsCache = {};
-
-async function fetchGoStats(name) {
-  if (_goStatsCache[name]) return _goStatsCache[name];
+async function fetchGoStatsDirect(name) {
+  if (_goStatsFetchCache[name]) return _goStatsFetchCache[name];
   try {
-    // pokemon-go-api uses uppercase IDs like "MEWTWO", "GIRATINA_ALTERED_FORME"
     const id = name.toUpperCase().replace(/-/g, '_');
-    // Fetch from the public GitHub Pages API
     const url = `https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${id}.json`;
     const r = await fetch(url);
     if (!r.ok) throw new Error('not found');
     const data = await r.json();
-    // The API returns an array of forms; first entry is the base form
     const entry = Array.isArray(data) ? data[0] : data;
     const s = entry?.stats;
     if (!s) throw new Error('no stats');
     const result = { atk: s.attack, def: s.defense, hp: s.stamina };
-    _goStatsCache[name] = result;
+    _goStatsFetchCache[name] = result;
     return result;
   } catch {
     return null;
@@ -163,10 +153,42 @@ function goStatsFromMainGame(poke) {
 }
 
 // ── Combined GO stats resolver ────────────────────────────────────────────
-// Tries the authoritative API first; falls back to approximation.
+// 1. Try in-memory pokedex cache (populated by fetchList → pokemon-go-api).
+// 2. Try direct per-pokemon fetch from pokemon-go-api.
+// 3. Fall back to main-game stat approximation.
 async function resolveGoStats(poke) {
-  const fromApi = await fetchGoStats(poke.name);
+  // poke.formId is set when coming from App.js (hint derived from name)
+  if (poke.formId) {
+    const cached = getGoStatsFromCache(poke.formId);
+    if (cached) return cached;
+  }
+
+  // Try by name slug (handles shadow/purified virtual entries)
+  const baseName = poke.baseName || poke.name;
+  const slugForCache = baseName
+    .replace(/-shadow$/, '').replace(/-purified$/, '');
+
+  const bySlug = getGoStatsFromCache(slugForCache);
+  if (bySlug) return bySlug;
+
+  // Handle PokeAPI → GO API name mismatches for regional forms
+  // PokeAPI: rattata-alolan  →  GO API key: rattata-alola
+  // PokeAPI: meowth-galarian →  GO API key: meowth-galar
+  const normalized = slugForCache
+    .replace(/-alolan$/, '-alola')
+    .replace(/-galarian$/, '-galar')
+    .replace(/-hisuian$/, '-hisui')
+    .replace(/-paldean$/, '-paldea');
+  if (normalized !== slugForCache) {
+    const byNorm = getGoStatsFromCache(normalized);
+    if (byNorm) return byNorm;
+  }
+
+  // Direct API fetch as fallback (also tries normalized name)
+  const fromApi = await fetchGoStatsDirect(normalized);
   if (fromApi) return fromApi;
+
+  // Last resort: approximate from main-game stats
   return goStatsFromMainGame(poke);
 }
 

@@ -23,10 +23,12 @@ function App() {
       const p = await fetchPoke(api);
       setPoke(p); setShadow(sh); setTab('info'); setGs(null);
 
-      // Fetch GO stats and species in parallel
+      // Fetch GO stats and species in parallel.
+      // Pass formId hint for the GO stats lookup (populated by fetchList → pokemon-go-api).
+      const formIdHint = api.toUpperCase().replace(/-/g, '_');
       const [sp, goStatsResult] = await Promise.all([
         fetchSpecies(p.species?.name || p.name).catch(() => null),
-        resolveGoStats(p),
+        resolveGoStats({ ...p, formId: formIdHint, baseName: api }),
       ]);
       setSpecies(sp);
       setGs(goStatsResult);
@@ -185,6 +187,7 @@ function App() {
 
       <footer style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--dim)', fontSize: 11, borderTop: '1px solid var(--border)', marginTop: 4 }}>
         Data from <a href="https://pokeapi.co" target="_blank" rel="noopener" style={{ color: 'var(--accent-light)' }}>PokéAPI</a>
+        {' · '}GO stats from <a href="https://pokemon-go-api.github.io/pokemon-go-api/" target="_blank" rel="noopener" style={{ color: 'var(--accent-light)' }}>pokemon-go-api</a>
         {' · '}Not affiliated with Niantic or Nintendo
       </footer>
     </div>

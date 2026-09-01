@@ -97,7 +97,8 @@ function DexGrid({ onSelect, activeName }) {
                 className={`dex-card${activeName === p.name ? ' sel' : ''}`}>
                 <div style={{ position: 'relative', width: 52, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img
-                    src={`https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.sid || p.id}.png`}
+                    src={p.goImg || `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.sid || p.id}.png`}
+                    onError={e => { if (p.goImg && e.target.src !== `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`) e.target.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${p.id}.png`; }}
                     width="48" height="48" loading="lazy" alt={p.dn}
                     style={{ objectFit: 'contain', filter: p.shadowType === 'purified' ? 'saturate(.25) brightness(1.1)' : '' }} />
                   {p.shadowType === 'shadow' && (
