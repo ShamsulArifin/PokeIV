@@ -1,5 +1,4 @@
-function IVChart({ poke }) {
-  const gs = React.useMemo(() => poke ? goStats(poke) : null, [poke]);
+function IVChart({ poke, gs }) {
   const [lv, setLv]     = React.useState(40);
   const [minCP, setMin] = React.useState('');
   const [maxCP, setMax] = React.useState('');
@@ -7,13 +6,19 @@ function IVChart({ poke }) {
   const [sort, setSort] = React.useState('iv');
   const [top, setTop]   = React.useState(50);
 
+  // Build all 4096 IV rows whenever gs or level changes
   const allRows = React.useMemo(() => {
     if (!gs) return [];
     const rows = [];
     for (let a = 15; a >= 0; a--)
       for (let d = 15; d >= 0; d--)
         for (let h = 15; h >= 0; h--)
-          rows.push({ a, d, h, cp: calcCP(gs.atk, gs.def, gs.hp, a, d, h, lv), hp: calcHP(gs.hp, h, lv), pct: Math.round(((a + d + h) / 45) * 100) });
+          rows.push({
+            a, d, h,
+            cp: calcCP(gs.atk, gs.def, gs.hp, a, d, h, lv),
+            hp: calcHP(gs.hp, h, lv),
+            pct: ivPct(a, d, h),
+          });
     return rows;
   }, [gs, lv]);
 
@@ -35,10 +40,11 @@ function IVChart({ poke }) {
   const ivBg      = p => p === 100 ? 'rgba(251,191,36,.12)' : p >= 98 ? 'rgba(74,222,128,.08)' : p >= 93 ? 'rgba(96,165,250,.08)' : p >= 82 ? 'rgba(167,139,250,.06)' : '';
 
   if (!poke) return <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--dim)', fontSize: 13 }}>Select a Pokémon first</div>;
+  if (!gs)   return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>;
 
   return (
     <div className="slide-up" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <RangeSlider label="Level" value={lv} onChange={setLv} min={1} max={50} step={0.5} color="var(--accent)" showNum />
+      <RangeSlider label="Level" value={lv} onChange={setLv} min={1} max={51} step={0.5} color="var(--accent)" showNum />
 
       {/* CP range filter */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -72,7 +78,7 @@ function IVChart({ poke }) {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         {[['100%', '#fbbf24'], ['98%+', '#4ade80'], ['93%+', '#60a5fa'], ['82%+', '#a78bfa'], ['Lower', 'var(--dim)']].map(([l, c]) => (
           <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--muted)' }}>
-            <div style={{ width: 10, height: 10, borderRadius: 3, background: c + (c.startsWith('var') ? '' : '55'), border: `1px solid ${c}` }} />
+            <div style={{ width: 10, height: 10, borderRadius: 3, background: c.startsWith('var') ? 'var(--s3)' : c + '55', border: `1px solid ${c}` }} />
             {l}
           </div>
         ))}

@@ -1,5 +1,4 @@
-function RaidIVChart({ poke }) {
-  const gs       = React.useMemo(() => poke ? goStats(poke) : null, [poke]);
+function RaidIVChart({ poke, gs }) {
   const types    = poke?.types?.map(t => t.type.name) || [];
   const weathers = React.useMemo(() => weatherForTypes(types), [types.join(',')]);
 
@@ -18,7 +17,7 @@ function RaidIVChart({ poke }) {
     for (let a = 15; a >= enc.fl; a--)
       for (let d = 15; d >= enc.fl; d--)
         for (let h = 15; h >= enc.fl; h--)
-          rows.push({ a, d, h, cpN: calcCP(gs.atk, gs.def, gs.hp, a, d, h, enc.lv), cpB: enc.boosted ? calcCP(gs.atk, gs.def, gs.hp, a, d, h, enc.blv) : null, hpN: calcHP(gs.hp, h, enc.lv), pct: Math.round(((a + d + h) / 45) * 100) });
+          rows.push({ a, d, h, cpN: calcCP(gs.atk, gs.def, gs.hp, a, d, h, enc.lv), cpB: enc.boosted ? calcCP(gs.atk, gs.def, gs.hp, a, d, h, enc.blv) : null, hpN: calcHP(gs.hp, h, enc.lv), pct: ivPct(a, d, h) });
     return rows;
   }, [gs, encKey]);
 
@@ -40,6 +39,7 @@ function RaidIVChart({ poke }) {
   const hundoB  = gs && enc.boosted ? calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, enc.blv) : 0;
 
   if (!poke) return <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--dim)', fontSize: 13 }}>Select a Pokémon first</div>;
+  if (!gs)   return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><Spinner /></div>;
 
   return (
     <div className="slide-up" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

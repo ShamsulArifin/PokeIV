@@ -1,16 +1,25 @@
 function ComparePanel({ isShiny, is3D }) {
   const [pokeA, setPokeA] = React.useState(null);
   const [pokeB, setPokeB] = React.useState(null);
-  const [ldA, setLdA]     = React.useState(false);
-  const [ldB, setLdB]     = React.useState(false);
+  const [gsA,   setGsA]   = React.useState(null);
+  const [gsB,   setGsB]   = React.useState(null);
+  const [ldA,   setLdA]   = React.useState(false);
+  const [ldB,   setLdB]   = React.useState(false);
 
-  const loadPoke = (name, set, setLd) => {
-    setLd(true);
-    fetchPoke(name).then(set).catch(() => set(null)).finally(() => setLd(false));
+  const loadPoke = async (name, setPoke, setGs, setLd) => {
+    setLd(true); setPoke(null); setGs(null);
+    try {
+      const p = await fetchPoke(name);
+      setPoke(p);
+      const s = await resolveGoStats(p);
+      setGs(s);
+    } catch {
+      setPoke(null); setGs(null);
+    } finally { setLd(false); }
   };
 
-  const sA   = pokeA ? goStats(pokeA) : null;
-  const sB   = pokeB ? goStats(pokeB) : null;
+  const sA   = gsA;
+  const sB   = gsB;
   const maxA = sA ? calcCP(sA.atk, sA.def, sA.hp, 15, 15, 15, 50) : 0;
   const maxB = sB ? calcCP(sB.atk, sB.def, sB.hp, 15, 15, 15, 50) : 0;
 
@@ -42,9 +51,12 @@ function ComparePanel({ isShiny, is3D }) {
 
       {/* A/B selector cards */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {[[pokeA, setPokeA, ldA, setLdA, sA, maxA, 'A'], [pokeB, setPokeB, ldB, setLdB, sB, maxB, 'B']].map(([poke, set, ld, setLd, stats, maxCP, slot]) => (
+        {[
+          { poke: pokeA, setPoke: setPokeA, setGs: setGsA, ld: ldA, setLd: setLdA, stats: sA, maxCP: maxA, slot: 'A' },
+          { poke: pokeB, setPoke: setPokeB, setGs: setGsB, ld: ldB, setLd: setLdB, stats: sB, maxCP: maxB, slot: 'B' },
+        ].map(({ poke, setPoke, setGs, ld, setLd, stats, maxCP, slot }) => (
           <div key={slot} className="card2" style={{ padding: '14px 12px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <SearchBar onSelect={n => loadPoke(n, set, setLd)} placeholder={`Pokémon ${slot}…`} />
+            <SearchBar onSelect={n => loadPoke(n, setPoke, setGs, setLd)} placeholder={`Pokémon ${slot}…`} />
 
             {ld && <div style={{ display: 'flex', justifyContent: 'center', padding: 16 }}><Spinner /></div>}
 
@@ -58,7 +70,9 @@ function ComparePanel({ isShiny, is3D }) {
                 </div>
                 <div className="card3" style={{ width: '100%', padding: '8px', textAlign: 'center', marginTop: 2 }}>
                   <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 2 }}>Max CP (Lv50)</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-light)' }}>{maxCP.toLocaleString()}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--accent-light)' }}>
+                    {stats ? maxCP.toLocaleString() : <Spinner size="sm" />}
+                  </div>
                 </div>
               </div>
             )}

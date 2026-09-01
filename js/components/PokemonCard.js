@@ -1,11 +1,16 @@
-function PokemonCard({ poke, species, isShiny, is3D, shadowType, onShiny, on3D }) {
-  const gs          = goStats(poke);
+function PokemonCard({ poke, species, gs, isShiny, is3D, shadowType, onShiny, on3D }) {
+  // gs may be null briefly while the API call resolves — show placeholders
   const types       = poke.types.map(t => t.type.name);
   const tc          = TYPE_COLORS[types[0]] || 'var(--accent)';
   const shadowColor = shadowType === 'shadow' ? '#7c3aed' : shadowType === 'purified' ? '#0891b2' : null;
-  const dispAtk     = shadowType === 'shadow' ? Math.round(gs.atk * 1.2) : gs.atk;
-  const dispDef     = shadowType === 'shadow' ? Math.round(gs.def * .8)  : gs.def;
-  const maxCP       = calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, 50);
+
+  const atk  = gs?.atk  ?? '—';
+  const def  = gs?.def  ?? '—';
+  const hp   = gs?.hp   ?? '—';
+  const dispAtk = shadowType === 'shadow' && gs ? Math.round(gs.atk * 1.2) : atk;
+  const dispDef = shadowType === 'shadow' && gs ? Math.round(gs.def * 0.8) : def;
+  const maxCP = gs ? calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, 50) : null;
+
   const genus       = species?.genera?.find(g => g.language.name === 'en')?.genus || '';
   const spriteFilter = shadowType === 'purified' ? 'saturate(.25) brightness(1.15)' : undefined;
   const spriteSize  = typeof window !== 'undefined' && window.innerWidth < 480 ? 120 : 156;
@@ -44,7 +49,6 @@ function PokemonCard({ poke, species, isShiny, is3D, shadowType, onShiny, on3D }
 
         {/* Sprite */}
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: 4, position: 'relative' }}>
-          {/* Ambient glow behind sprite */}
           <div style={{ position: 'absolute', width: 140, height: 140, borderRadius: '50%', background: shadowType === 'shadow' ? `radial-gradient(circle,${shadowColor}44 0%,transparent 70%)` : tc + '28', filter: 'blur(24px)', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', pointerEvents: 'none' }} />
           <div style={spriteFilter ? { filter: spriteFilter } : {}}>
             <PokemonImage poke={poke} isShiny={isShiny} is3D={is3D} shadowType={shadowType} size={spriteSize} />
@@ -61,16 +65,20 @@ function PokemonCard({ poke, species, isShiny, is3D, shadowType, onShiny, on3D }
       {/* Stats row */}
       <div style={{ padding: '4px 16px 16px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginBottom: 10 }}>
-          {[['Attack', dispAtk, '#f87171'], ['Defense', dispDef, '#60a5fa'], ['HP', gs.hp, '#4ade80']].map(([l, v, c]) => (
+          {[['Attack', dispAtk, '#f87171'], ['Defense', dispDef, '#60a5fa'], ['HP', hp, '#4ade80']].map(([l, v, c]) => (
             <div key={l} style={{ textAlign: 'center', padding: '8px 6px', borderRadius: 10, background: c + '14', border: `1px solid ${c}28` }}>
               <div style={{ fontSize: 10, fontWeight: 600, color: c, marginBottom: 2 }}>{l}</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>{v}</div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', lineHeight: 1 }}>
+                {gs ? v : <span style={{ opacity: .4 }}>…</span>}
+              </div>
             </div>
           ))}
         </div>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: 10, color: 'var(--dim)', marginBottom: 2 }}>Max CP · Lv50 · 15/15/15</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent-light)', letterSpacing: '-.02em' }}>{maxCP.toLocaleString()}</div>
+          <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--accent-light)', letterSpacing: '-.02em' }}>
+            {maxCP !== null ? maxCP.toLocaleString() : <span style={{ opacity: .4 }}>…</span>}
+          </div>
         </div>
       </div>
     </div>

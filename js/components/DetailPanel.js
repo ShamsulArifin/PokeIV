@@ -1,5 +1,4 @@
-function DetailPanel({ poke, species }) {
-  const gs = goStats(poke);
+function DetailPanel({ poke, species, gs }) {
   const types = poke.types.map(t => t.type.name);
   const { weak, resist, immune } = typeWeaknesses(types);
   const flavor = species?.flavor_text_entries?.find(f => f.language.name === 'en')?.flavor_text?.replace(/\f|\n/g, ' ') || '';
@@ -20,20 +19,24 @@ function DetailPanel({ poke, species }) {
         ))}
       </div>
 
-      {/* GO Stats */}
+      {/* GO Stats — authoritative values from pokemon-go-api */}
       <div className="card2" style={{ padding: '14px 16px' }}>
         <span style={S}>Pokémon GO Stats</span>
-        <StatBar label="Attack"  value={gs.atk} max={300} auto />
-        <StatBar label="Defense" value={gs.def} max={300} auto />
-        <StatBar label="HP"      value={gs.hp}  max={500} auto />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-          {[['Attack', gs.atk, '#f87171'], ['Defense', gs.def, '#60a5fa'], ['HP', gs.hp, '#4ade80']].map(([l, v, c]) => (
-            <div key={l} style={{ textAlign: 'center', padding: '6px 4px', borderRadius: 8, background: c + '14', border: `1px solid ${c}28` }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: c, marginBottom: 1 }}>{l}</div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{v}</div>
-            </div>
-          ))}
-        </div>
+        {gs ? (<>
+          <StatBar label="Attack"  value={gs.atk} max={300} auto />
+          <StatBar label="Defense" value={gs.def} max={300} auto />
+          <StatBar label="HP"      value={gs.hp}  max={500} auto />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+            {[['Attack', gs.atk, '#f87171'], ['Defense', gs.def, '#60a5fa'], ['HP', gs.hp, '#4ade80']].map(([l, v, c]) => (
+              <div key={l} style={{ textAlign: 'center', padding: '6px 4px', borderRadius: 8, background: c + '14', border: `1px solid ${c}28` }}>
+                <div style={{ fontSize: 10, fontWeight: 600, color: c, marginBottom: 1 }}>{l}</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text)' }}>{v}</div>
+              </div>
+            ))}
+          </div>
+        </>) : (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 12 }}><Spinner /></div>
+        )}
       </div>
 
       {/* Type match-ups */}

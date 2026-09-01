@@ -1,16 +1,16 @@
 function App() {
   const [poke, setPoke]       = React.useState(null);
   const [species, setSpecies] = React.useState(null);
-  const [shadow, setShadow]   = React.useState(null);  // null | 'shadow' | 'purified'
+  const [gs, setGs]           = React.useState(null);   // GO base stats {atk,def,hp}
+  const [shadow, setShadow]   = React.useState(null);   // null | 'shadow' | 'purified'
   const [loading, setLoading] = React.useState(false);
   const [error, setError]     = React.useState(null);
   const [isShiny, setIsShiny] = React.useState(false);
   const [is3D, setIs3D]       = React.useState(true);
   const [tab, setTab]         = React.useState('info');
-  const [mode, setMode]       = React.useState('dex');   // 'dex' | 'compare'
+  const [mode, setMode]       = React.useState('dex');
   const [showDex, setShowDex] = React.useState(false);
 
-  // Derive the active type color for the tab underline
   const typeColor = poke ? (TYPE_COLORS[poke.types[0].type.name] || 'var(--accent)') : 'var(--accent)';
 
   // ── Load a Pokémon ───────────────────────────────────────────────────────
@@ -21,12 +21,18 @@ function App() {
     if (api.endsWith('-purified')) { sh = 'purified'; api = api.replace(/-purified$/, ''); }
     try {
       const p = await fetchPoke(api);
-      setPoke(p); setShadow(sh); setTab('info');
-      const sp = await fetchSpecies(p.species?.name || p.name).catch(() => null);
+      setPoke(p); setShadow(sh); setTab('info'); setGs(null);
+
+      // Fetch GO stats and species in parallel
+      const [sp, goStatsResult] = await Promise.all([
+        fetchSpecies(p.species?.name || p.name).catch(() => null),
+        resolveGoStats(p),
+      ]);
       setSpecies(sp);
+      setGs(goStatsResult);
     } catch {
       setError(`"${nameOrId}" not found. Try a name like "pikachu" or a number.`);
-      setPoke(null); setSpecies(null); setShadow(null);
+      setPoke(null); setSpecies(null); setShadow(null); setGs(null);
     } finally { setLoading(false); }
   }, []);
 
@@ -130,7 +136,7 @@ function App() {
               )}
 
               {poke && !loading && (<>
-                <PokemonCard poke={poke} species={species} isShiny={isShiny} is3D={is3D} shadowType={shadow} onShiny={setIsShiny} on3D={setIs3D} />
+                <PokemonCard poke={poke} species={species} isShiny={isShiny} is3D={is3D} shadowType={shadow} gs={gs} onShiny={setIsShiny} on3D={setIs3D} />
 
                 <div className="card" style={{ overflow: 'hidden' }}>
                   {/* Tab bar */}
@@ -147,10 +153,10 @@ function App() {
 
                   {/* Tab content */}
                   <div style={{ padding: '16px 14px' }}>
-                    {tab === 'info'     && <DetailPanel  poke={poke} species={species} />}
-                    {tab === 'cp'       && <CPCalc        poke={poke} />}
-                    {tab === 'iv'       && <IVChart       poke={poke} />}
-                    {tab === 'raid'     && <RaidIVChart   poke={poke} />}
+                    {tab === 'info'     && <DetailPanel  poke={poke} species={species} gs={gs} />}
+                    {tab === 'cp'       && <CPCalc        poke={poke} gs={gs} />}
+                    {tab === 'iv'       && <IVChart       poke={poke} gs={gs} />}
+                    {tab === 'raid'     && <RaidIVChart   poke={poke} gs={gs} />}
                     {tab === 'counters' && <RaidCounters  poke={poke} />}
                     {tab === 'evo'      && (
                       <div>
