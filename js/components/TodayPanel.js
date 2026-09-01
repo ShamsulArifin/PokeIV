@@ -151,9 +151,10 @@ function ResearchCard({ task, onSelect }) {
             background: 'var(--s3)', border: '1px solid var(--border2)',
             color: 'var(--muted)', whiteSpace: 'nowrap', flexShrink: 0,
           }}>{typeLabel}</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>
-            {task.text}
-          </span>
+          <span
+            style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}
+            dangerouslySetInnerHTML={{ __html: task.text }}
+          />
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', paddingTop: 4, borderTop: '1px solid var(--border)' }}>
