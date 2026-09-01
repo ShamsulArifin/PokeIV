@@ -1,24 +1,24 @@
 // ── RaidExportCard ────────────────────────────────────────────────────────
-// Renders a LeekDuck-style raid info card onto a <canvas>.
-// Canvas is 1080 × 1200 px.
+// Renders a LeekDuck-style raid info card onto a <canvas> and downloads it.
+// 1080 × 1260 px
 
-const CW  = 1080;
-const CH  = 1220;
-const PAD = 48;
+const CARD_W = 1080;
+const CARD_H = 1260;
+const P      = 44;   // outer padding
 
-// ── Canvas helpers ────────────────────────────────────────────────────────
+// ═══════════════════════════ CANVAS HELPERS ═══════════════════════════════
 
-function loadImg(src) {
-  return new Promise((resolve, reject) => {
+function rc_loadImg(src) {
+  return new Promise(res => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload  = () => resolve(img);
-    img.onerror = () => reject(new Error(`load fail: ${src}`));
+    img.onload  = () => res(img);
+    img.onerror = () => res(null);   // resolve null on error — never reject
     img.src = src;
   });
 }
 
-function rrect(ctx, x, y, w, h, r) {
+function rc_rrect(ctx, x, y, w, h, r) {
   r = Math.min(r, w / 2, h / 2);
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -30,67 +30,115 @@ function rrect(ctx, x, y, w, h, r) {
   ctx.closePath();
 }
 
-function hexA(hex, a) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
+function rc_hexA(hex, a) {
+  const r = parseInt(hex.slice(1,3), 16);
+  const g = parseInt(hex.slice(3,5), 16);
+  const b = parseInt(hex.slice(5,7), 16);
   return `rgba(${r},${g},${b},${a})`;
 }
 
-// Safe text draw — always sets font/fill/align before drawing
-function drawTxt(ctx, text, x, y, { font, fill, align = 'left', maxW } = {}) {
-  if (font)  ctx.font      = font;
-  if (fill)  ctx.fillStyle = fill;
-  ctx.textAlign = align;
-  if (maxW) ctx.fillText(String(text), x, y, maxW);
-  else      ctx.fillText(String(text), x, y);
+// Draw text — font/fill/align set atomically so state never leaks
+function rc_txt(ctx, text, x, y, font, fill, align = 'left', maxW) {
+  ctx.font         = font;
+  ctx.fillStyle    = fill;
+  ctx.textAlign    = align;
+  ctx.textBaseline = 'alphabetic';
+  if (maxW !== undefined) ctx.fillText(String(text), x, y, maxW);
+  else                    ctx.fillText(String(text), x, y);
 }
 
-// ── Image loader ──────────────────────────────────────────────────────────
-async function loadAllImages(poke, moves, counters) {
+// Draw text vertically centred in a row
+function rc_txtMid(ctx, text, x, midY, font, fill, align = 'left', maxW) {
+  ctx.font         = font;
+  ctx.fillStyle    = fill;
+  ctx.textAlign    = align;
+  ctx.textBaseline = 'middle';
+  if (maxW !== undefined) ctx.fillText(String(text), x, midY, maxW);
+  else                    ctx.fillText(String(text), x, midY);
+  ctx.textBaseline = 'alphabetic';
+}
+
+// ── Type badge drawn entirely on canvas (no external image needed) ─────────
+// Draws a pill with coloured background and white label
+function rc_typePill(ctx, typeName, x, y) {
+  const col  = TYPE_COLORS[typeName] || '#888';
+  const FONT = '700 21px Inter, sans-serif';
+  ctx.font   = FONT;
+  const lw   = ctx.measureText(cap(typeName)).width;
+  const bw   = lw + 28;
+  const bh   = 36;
+
+  rc_rrect(ctx, x, y, bw, bh, 18);
+  ctx.fillStyle   = col;
+  ctx.fill();
+  // Slight dark overlay for readability
+  rc_rrect(ctx, x, y, bw, bh, 18);
+  ctx.fillStyle   = 'rgba(0,0,0,0.25)';
+  ctx.fill();
+
+  rc_txtMid(ctx, cap(typeName), x + bw / 2, y + bh / 2, FONT, '#ffffff', 'center');
+  return bw;
+}
+
+// ── Small circular type dot for move list and weakness row ─────────────────
+function rc_typeDot(ctx, typeName, cx, cy, r = 16) {
+  const col = TYPE_COLORS[typeName] || '#888';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle   = col;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // 2-letter abbreviation
+  const abbr = (typeName || '').slice(0, 2).toUpperCase();
+  rc_txtMid(ctx, abbr, cx, cy, `700 ${r * 0.9}px Inter, sans-serif`, '#fff', 'center');
+}
+
+// ═══════════════════════════ IMAGE LOADER ═════════════════════════════════
+
+async function rc_loadImages(poke, counters) {
   const jobs = {};
 
-  // Main & shiny sprites
-  const mainSrc  = poke.sprites?.other?.home?.front_default
-                || poke.sprites?.other?.['official-artwork']?.front_default
+  // Main sprite (official artwork preferred)
+  const mainSrc  = poke.sprites?.other?.['official-artwork']?.front_default
+                || poke.sprites?.other?.home?.front_default
                 || poke.sprites?.front_default || '';
-  const shinySrc = poke.sprites?.other?.home?.front_shiny
-                || poke.sprites?.other?.['official-artwork']?.front_shiny
+  const shinySrc = poke.sprites?.other?.['official-artwork']?.front_shiny
+                || poke.sprites?.other?.home?.front_shiny
                 || poke.sprites?.front_shiny || '';
-  if (mainSrc)  jobs.main  = loadImg(mainSrc);
-  if (shinySrc) jobs.shiny = loadImg(shinySrc);
 
-  // ALL type icons upfront (used for badges, weaknesses, move types)
-  for (const t of Object.keys(TYPE_COLORS)) {
-    jobs[`ti_${t}`] = loadImg(`https://assets.dittobase.com/go/types/${t}.png`);
-  }
+  if (mainSrc)  jobs.main  = rc_loadImg(mainSrc);
+  if (shinySrc) jobs.shiny = rc_loadImg(shinySrc);
 
   // Counter sprites
   for (const c of counters) {
     jobs[`ctr_${c.name}`] = fetchPoke(c.name)
       .then(p => {
-        const src = p.sprites?.other?.home?.front_default || p.sprites?.front_default || '';
-        return src ? loadImg(src) : null;
+        const s = p.sprites?.other?.home?.front_default
+               || p.sprites?.other?.['official-artwork']?.front_default
+               || p.sprites?.front_default || '';
+        return s ? rc_loadImg(s) : null;
       })
       .catch(() => null);
   }
 
-  const keys   = Object.keys(jobs);
+  const keys    = Object.keys(jobs);
   const settled = await Promise.allSettled(keys.map(k => jobs[k]));
-  const imgs   = {};
+  const imgs    = {};
   keys.forEach((k, i) => {
-    if (settled[i].status === 'fulfilled' && settled[i].value) {
-      imgs[k] = settled[i].value;
-    }
+    if (settled[i].status === 'fulfilled') imgs[k] = settled[i].value;
   });
   return imgs;
 }
 
-// ── Main draw ─────────────────────────────────────────────────────────────
-async function drawRaidCard(canvas, poke, species, gs, shadowType) {
+// ═══════════════════════════ MAIN DRAW ═══════════════════════════════════
+
+async function rc_draw(canvas, poke, species, gs, shadowType) {
   const ctx = canvas.getContext('2d');
-  canvas.width  = CW;
-  canvas.height = CH;
+  canvas.width  = CARD_W;
+  canvas.height = CARD_H;
 
   const types      = (poke.types || []).map(t => t.type.name);
   const primaryCol = TYPE_COLORS[types[0]] || '#6c6ef5';
@@ -101,7 +149,7 @@ async function drawRaidCard(canvas, poke, species, gs, shadowType) {
   const defStat = shadowType === 'shadow' ? Math.round(gs.def * 0.8) : gs.def;
   const hpStat  = gs.hp;
 
-  // CP ranges
+  // CP
   const cpMin  = calcCP(gs.atk, gs.def, gs.hp, 10, 10, 10, 20);
   const cpMax  = calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, 20);
   const cpBMin = calcCP(gs.atk, gs.def, gs.hp, 10, 10, 10, 25);
@@ -110,347 +158,287 @@ async function drawRaidCard(canvas, poke, species, gs, shadowType) {
   // Weather
   const weatherLabels = weatherForTypes(types);
 
-  // Weaknesses sorted by multiplier desc
+  // Weaknesses
   const { weak } = typeWeaknesses(types);
-  const weakTypes = weak.sort((a, b) => b.m - a.m).map(w => w.t);
+  const weakTypes = [...weak].sort((a, b) => b.m - a.m).map(w => w.t);
 
   // Counters
   const counters = scoredCounters(types).slice(0, 6);
 
-  // ── GO entry + moves ─────────────────────────────────────────────────
-  let goEntry = goPokedexByFormId[poke.formId]
-             || goPokedexByFormId[(poke.formId || '').toUpperCase()]
-             || goPokedexByName[poke.name]
-             || null;
-
-  if (!goEntry) {
-    try {
-      const fid = ((poke.formId || poke.name) + '').toUpperCase().replace(/-/g, '_');
-      const r   = await fetch(`https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${fid}.json`);
-      if (r.ok) { const d = await r.json(); goEntry = Array.isArray(d) ? d[0] : d; }
-    } catch { /* ignore */ }
+  // ── GO entry (for moves) ──────────────────────────────────────────────
+  // poke.name is the PokeAPI slug (e.g. "mewtwo") → maps to goPokedexByName exactly.
+  // Ensure fetchList has run so goPokedexByName is populated.
+  if (typeof fetchList === 'function') {
+    try { await fetchList(); } catch { /* already cached or unavailable */ }
   }
 
-  const toArr = obj => (obj && typeof obj === 'object' && !Array.isArray(obj))
-    ? Object.values(obj) : (Array.isArray(obj) ? obj : []);
+  let goEntry = goPokedexByName[poke.name]
+             || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
+             || null;
+
+  // Direct API fallback if still missing
+  if (!goEntry) {
+    try {
+      const fid = poke.name.toUpperCase().replace(/-/g, '_');
+      const r   = await fetch(`https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${fid}.json`);
+      if (r.ok) { const d = await r.json(); goEntry = Array.isArray(d) ? d[0] : d; }
+    } catch { /* leave null */ }
+  }
+
+  // Moves — quickMoves and cinematicMoves are objects keyed by move ID
+  const toArr = obj =>
+    obj && !Array.isArray(obj) ? Object.values(obj) : (obj || []);
 
   const fastMoves   = toArr(goEntry?.quickMoves).slice(0, 4).map(m => ({
-    name: m.names?.English || m.id || '?',
+    name: m.names?.English || (m.id || '').replace(/_FAST$/, '').replace(/_/g, ' ') || '?',
     type: goTypeToSlug(m.type?.type || ''),
   }));
   const chargeMoves = toArr(goEntry?.cinematicMoves).slice(0, 4).map(m => ({
-    name: m.names?.English || m.id || '?',
+    name: m.names?.English || (m.id || '').replace(/_/g, ' ') || '?',
     type: goTypeToSlug(m.type?.type || ''),
   }));
 
   // ── Load images ───────────────────────────────────────────────────────
-  const imgs = await loadAllImages(poke, [...fastMoves, ...chargeMoves], counters);
+  const imgs = await rc_loadImages(poke, counters);
 
-  // ══════════════════════ DRAW ══════════════════════════════════════════
+  // ════════════════════════ RENDER ════════════════════════════════════
 
-  // Background
-  const bgGrad = ctx.createLinearGradient(0, 0, CW, CH);
-  bgGrad.addColorStop(0,   '#18182a');
-  bgGrad.addColorStop(0.5, '#141428');
-  bgGrad.addColorStop(1,   '#0e1a30');
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, CW, CH);
+  // ── Background ────────────────────────────────────────────────────────
+  const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
+  bg.addColorStop(0,   '#1b1b2e');
+  bg.addColorStop(1,   '#111122');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-  // Type colour overlay (top-right)
-  const ovGrad = ctx.createRadialGradient(CW * 0.85, CH * 0.15, 0, CW * 0.85, CH * 0.15, 500);
-  ovGrad.addColorStop(0,   hexA(primaryCol, 0.28));
-  ovGrad.addColorStop(0.5, hexA(secondCol,  0.12));
-  ovGrad.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = ovGrad;
-  ctx.fillRect(0, 0, CW, CH);
+  // Type colour splash top-right
+  const splash = ctx.createRadialGradient(CARD_W * 0.82, 0, 0, CARD_W * 0.82, 0, 600);
+  splash.addColorStop(0,   rc_hexA(primaryCol, 0.45));
+  splash.addColorStop(0.5, rc_hexA(secondCol,  0.18));
+  splash.addColorStop(1,   'rgba(0,0,0,0)');
+  ctx.fillStyle = splash;
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-  // ── SECTION A: top half (split at y=520) ─────────────────────────────
-  const SPLIT = 520;
-  const LEFT_W = 560;   // text column
-  const RIGHT_X = LEFT_W + 20;
-  const RIGHT_W = CW - RIGHT_X - PAD;
+  // ────────────────────────────────────────────────────────────────────
+  // SECTION 1 — top block  (y: 0 → 520)
+  //   Left col  x: 44   → 580   (text + stats)
+  //   Right col x: 580  → 1036  (main sprite)
+  // ────────────────────────────────────────────────────────────────────
+  const S1_H    = 520;
+  const LEFT_X  = P;
+  const LEFT_W  = 530;
+  const RIGHT_X = 590;
+  const RIGHT_W = CARD_W - RIGHT_X - P;
 
-  // ─ Dex number + Name ─────────────────────────────────────────────────
-  ctx.textBaseline = 'alphabetic';
-  drawTxt(ctx, `No${poke.id}`, PAD, PAD + 52, {
-    font:  '700 40px Inter, sans-serif',
-    fill:  'rgba(255,255,255,0.5)',
-    align: 'left',
-  });
+  // Dex number (small, above name)
+  rc_txt(ctx, `No. ${poke.id}`, LEFT_X, P + 36,
+    '600 28px Inter, sans-serif', 'rgba(255,255,255,0.45)');
 
-  const displayName = fmtName(poke.name);
-  // Measure name to pick font size that fits LEFT_W
-  ctx.font = '800 68px Inter, sans-serif';
-  let nameFont = '800 68px Inter, sans-serif';
-  if (ctx.measureText(displayName).width > LEFT_W - 140) nameFont = '800 52px Inter, sans-serif';
-  if (ctx.measureText(displayName).width > LEFT_W - 100) nameFont = '800 44px Inter, sans-serif';
+  // Name
+  const dispName = fmtName(poke.name);
+  ctx.font = '800 72px Inter, sans-serif';
+  let nameFont = '800 72px Inter, sans-serif';
+  while (ctx.measureText(dispName).width > LEFT_W && parseInt(nameFont) > 36) {
+    const sz = parseInt(nameFont) - 4;
+    nameFont = `800 ${sz}px Inter, sans-serif`;
+    ctx.font = nameFont;
+  }
+  rc_txt(ctx, dispName, LEFT_X, P + 104, nameFont, '#ffffff', 'left', LEFT_W);
 
-  drawTxt(ctx, displayName, PAD + 128, PAD + 58, {
-    font:  nameFont,
-    fill:  '#ffffff',
-    align: 'left',
-    maxW:  LEFT_W - 140,
-  });
-
+  // Shadow / Purified tag
   if (shadowType) {
-    const sc = shadowType === 'shadow' ? '#c084fc' : '#22d3ee';
-    drawTxt(ctx, shadowType === 'shadow' ? '✦ Shadow' : '✦ Purified', PAD + 130, PAD + 90, {
-      font: '600 22px Inter, sans-serif', fill: sc, align: 'left',
-    });
+    const sc  = shadowType === 'shadow' ? '#c084fc' : '#22d3ee';
+    const lbl = shadowType === 'shadow' ? '✦ Shadow' : '✦ Purified';
+    rc_txt(ctx, lbl, LEFT_X + 4, P + 138, '600 22px Inter, sans-serif', sc);
   }
 
-  // ─ Type badges ────────────────────────────────────────────────────────
-  const TYPE_Y = PAD + 116;
-  let tx = PAD;
-  const BADGE_H = 40;
-  const ICON_S  = 28;
-
-  for (const typeName of types) {
-    const col = TYPE_COLORS[typeName] || '#888';
-    ctx.font  = '700 22px Inter, sans-serif';
-    const lw  = ctx.measureText(cap(typeName)).width;
-    const bw  = ICON_S + 8 + lw + 22;   // [pad8] [icon28] [gap8] [text] [pad14]
-
-    rrect(ctx, tx, TYPE_Y, bw, BADGE_H, 20);
-    ctx.fillStyle   = hexA(col, 0.22);
-    ctx.fill();
-    ctx.strokeStyle = hexA(col, 0.6);
-    ctx.lineWidth   = 1.5;
-    ctx.stroke();
-
-    const timg = imgs[`ti_${typeName}`];
-    if (timg) ctx.drawImage(timg, tx + 8, TYPE_Y + (BADGE_H - ICON_S) / 2, ICON_S, ICON_S);
-
-    ctx.textBaseline = 'middle';
-    drawTxt(ctx, cap(typeName), tx + 8 + ICON_S + 8, TYPE_Y + BADGE_H / 2, {
-      font: '700 22px Inter, sans-serif', fill: col, align: 'left',
-    });
-    ctx.textBaseline = 'alphabetic';
-
+  // Type pills
+  let tx = LEFT_X;
+  const TYPE_ROW_Y = P + 158;
+  for (const t of types) {
+    const bw = rc_typePill(ctx, t, tx, TYPE_ROW_Y);
     tx += bw + 10;
   }
 
-  // ─ Stats bars ─────────────────────────────────────────────────────────
-  const BAR_START_Y = TYPE_Y + BADGE_H + 20;
-  const BAR_X      = PAD + 78;
-  const BAR_W      = 380;
-  const BAR_H      = 24;
-  const BAR_GAP    = 38;
-  const STAT_FONT  = '800 26px Inter, sans-serif';
-  const VAL_MAX    = { HP: 500, ATK: 450, DEF: 450 };
-
-  const statRows = [
-    { label: 'HP',  value: hpStat,  color: '#4ade80' },
-    { label: 'ATK', value: atkStat, color: '#f87171' },
-    { label: 'DEF', value: defStat, color: '#60a5fa' },
+  // ── Stat bars ─────────────────────────────────────────────────────────
+  const BAR_START = TYPE_ROW_Y + 56;
+  const BAR_H     = 26;
+  const BAR_GAP   = 42;
+  const BAR_X     = LEFT_X + 84;
+  const BAR_W     = 390;
+  const statRows  = [
+    { lbl: 'HP',  val: hpStat,  col: '#4ade80', max: 500 },
+    { lbl: 'ATK', val: atkStat, col: '#f87171', max: 400 },
+    { lbl: 'DEF', val: defStat, col: '#60a5fa', max: 400 },
   ];
 
-  statRows.forEach(({ label, value, color }, i) => {
-    const y   = BAR_START_Y + i * BAR_GAP;
-    const pct = Math.min(1, value / VAL_MAX[label]);
-
-    ctx.textBaseline = 'middle';
-    drawTxt(ctx, label, PAD, y + BAR_H / 2, { font: STAT_FONT, fill: '#ffffff', align: 'left' });
-
-    // Track bg
-    rrect(ctx, BAR_X, y, BAR_W, BAR_H, 12);
+  statRows.forEach(({ lbl, val, col, max }, i) => {
+    const y = BAR_START + i * BAR_GAP;
+    // Label
+    rc_txtMid(ctx, lbl, LEFT_X, y + BAR_H / 2, '800 26px Inter, sans-serif', '#fff');
+    // Track
+    rc_rrect(ctx, BAR_X, y, BAR_W, BAR_H, 13);
     ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.fill();
-
-    // Track fill
-    const fillW = Math.max(BAR_H, BAR_W * pct);
-    rrect(ctx, BAR_X, y, fillW, BAR_H, 12);
-    ctx.fillStyle = color; ctx.fill();
-
-    // Value label
-    drawTxt(ctx, String(value), BAR_X + 10, y + BAR_H / 2, {
-      font: '700 17px Inter, sans-serif', fill: '#000', align: 'left',
-    });
-    ctx.textBaseline = 'alphabetic';
+    // Fill
+    const fw = Math.max(BAR_H, BAR_W * Math.min(1, val / max));
+    rc_rrect(ctx, BAR_X, y, fw, BAR_H, 13);
+    ctx.fillStyle = col; ctx.fill();
+    // Value
+    rc_txtMid(ctx, String(val), BAR_X + 10, y + BAR_H / 2,
+      '700 17px Inter, sans-serif', '#000');
   });
 
-  // ─ CP / Weather / Weaknesses ──────────────────────────────────────────
-  const INFO_START_Y = BAR_START_Y + statRows.length * BAR_GAP + 22;
-  const LINE_H = 38;
+  // ── CP / weather / weaknesses ─────────────────────────────────────────
+  let IY = BAR_START + statRows.length * BAR_GAP + 24;
+  const IL = 36;   // line height
 
-  // Helper: label + bold value on same line
-  const infoLine = (label, value, y, valCol = '#fff') => {
-    ctx.textBaseline = 'alphabetic';
-    ctx.font = '600 23px Inter, sans-serif';
+  const infoRow = (label, value, valCol = '#fff') => {
+    ctx.font = '600 22px Inter, sans-serif';
     const lw = ctx.measureText(label).width;
-    drawTxt(ctx, label, PAD, y, { font: '600 23px Inter, sans-serif', fill: 'rgba(255,255,255,0.65)', align: 'left' });
-    drawTxt(ctx, value, PAD + lw + 8, y, { font: '700 23px Inter, sans-serif', fill: valCol, align: 'left' });
+    rc_txt(ctx, label, LEFT_X, IY, '600 22px Inter, sans-serif', 'rgba(255,255,255,0.6)');
+    rc_txt(ctx, value, LEFT_X + lw + 8, IY, '700 22px Inter, sans-serif', valCol, 'left', LEFT_W - lw - 8);
+    IY += IL;
   };
 
-  infoLine('Catch CP:',   `${cpMin.toLocaleString()} – ${cpMax.toLocaleString()}`,   INFO_START_Y);
-  infoLine('Boosted CP:', `${cpBMin.toLocaleString()} – ${cpBMax.toLocaleString()}`, INFO_START_Y + LINE_H);
-
+  infoRow('Catch CP:', `${cpMin.toLocaleString()} – ${cpMax.toLocaleString()}`);
+  infoRow('Boosted CP:', `${cpBMin.toLocaleString()} – ${cpBMax.toLocaleString()}`);
   if (weatherLabels.length > 0) {
-    ctx.font = '600 23px Inter, sans-serif';
-    const lw = ctx.measureText('Boosted By:').width;
-    drawTxt(ctx, 'Boosted By:', PAD, INFO_START_Y + LINE_H * 2, {
-      font: '600 23px Inter, sans-serif', fill: 'rgba(255,255,255,0.65)', align: 'left',
-    });
-    drawTxt(ctx, weatherLabels.join('  '), PAD + lw + 8, INFO_START_Y + LINE_H * 2, {
-      font: '600 21px Inter, sans-serif', fill: '#93c5fd', align: 'left',
-      maxW: LEFT_W - lw - 16,
-    });
+    infoRow('Boosted By:', weatherLabels.join('  '), '#93c5fd');
   }
 
-  // Weak to
-  const WEAK_Y = INFO_START_Y + LINE_H * (weatherLabels.length > 0 ? 3 : 2) + 4;
-  ctx.textBaseline = 'alphabetic';
-  ctx.font = '600 23px Inter, sans-serif';
-  const wLabelW = ctx.measureText('Weak to:').width;
-  drawTxt(ctx, 'Weak to:', PAD, WEAK_Y + 22, { font: '600 23px Inter, sans-serif', fill: 'rgba(255,255,255,0.65)', align: 'left' });
-
-  let wx = PAD + wLabelW + 10;
-  const WICON = 34;
-  for (const wt of weakTypes.slice(0, 12)) {
-    if (wx + WICON > LEFT_W) break;
-    const wi = imgs[`ti_${wt}`];
-    if (wi) ctx.drawImage(wi, wx, WEAK_Y + 4, WICON, WICON);
-    wx += WICON + 6;
+  // Weak to: (dots on same row)
+  rc_txt(ctx, 'Weak to:', LEFT_X, IY, '600 22px Inter, sans-serif', 'rgba(255,255,255,0.6)');
+  ctx.font = '600 22px Inter, sans-serif';
+  const wlw = ctx.measureText('Weak to:').width;
+  let wx = LEFT_X + wlw + 14;
+  const DOT_R  = 17;
+  const DOT_SP = DOT_R * 2 + 6;
+  for (const wt of weakTypes) {
+    if (wx + DOT_R * 2 > LEFT_X + LEFT_W) break;
+    rc_typeDot(ctx, wt, wx + DOT_R, IY - DOT_R + 4, DOT_R);
+    wx += DOT_SP;
   }
+  IY += IL;
 
-  // ─ Main Pokémon sprite (right column) ────────────────────────────────
-  const SPR_SIZE = 460;
-  const SPR_X    = RIGHT_X;
-  const SPR_Y    = PAD - 20;
-
-  // Glow
-  const grd = ctx.createRadialGradient(
-    SPR_X + SPR_SIZE / 2, SPR_Y + SPR_SIZE / 2, 40,
-    SPR_X + SPR_SIZE / 2, SPR_Y + SPR_SIZE / 2, 230,
-  );
-  grd.addColorStop(0,   hexA(primaryCol, 0.40));
-  grd.addColorStop(0.6, hexA(primaryCol, 0.14));
-  grd.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.fillStyle = grd;
-  ctx.fillRect(SPR_X, SPR_Y, SPR_SIZE, SPR_SIZE);
-
-  if (imgs.main) ctx.drawImage(imgs.main, SPR_X, SPR_Y, SPR_SIZE, SPR_SIZE);
+  // ── Main sprite ───────────────────────────────────────────────────────
+  if (imgs.main) {
+    const SS  = 430;
+    const sx  = RIGHT_X + (RIGHT_W - SS) / 2;
+    const sy  = P - 10;
+    // Glow
+    const gl = ctx.createRadialGradient(sx + SS/2, sy + SS/2, 30, sx + SS/2, sy + SS/2, 220);
+    gl.addColorStop(0,   rc_hexA(primaryCol, 0.50));
+    gl.addColorStop(0.6, rc_hexA(primaryCol, 0.18));
+    gl.addColorStop(1,   'rgba(0,0,0,0)');
+    ctx.fillStyle = gl; ctx.fillRect(sx, sy, SS, SS);
+    ctx.drawImage(imgs.main, sx, sy, SS, SS);
+  }
 
   // ── Divider ───────────────────────────────────────────────────────────
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(PAD, SPLIT); ctx.lineTo(CW - PAD, SPLIT);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(P, S1_H); ctx.lineTo(CARD_W - P, S1_H); ctx.stroke();
 
-  // ══════════════════════ SECTION B: moves + shiny ══════════════════════
-  const B_Y    = SPLIT + 30;
-  const COL1_X = PAD;           // fast moves  (x=48)
-  const COL2_X = PAD + 270;     // charge moves (x=318)
-  const COL3_X = PAD + 560;     // shiny        (x=608)
+  // ────────────────────────────────────────────────────────────────────
+  // SECTION 2 — moves + shiny  (y: 520 → 790)
+  //   Col A Fast Moves   x: 44
+  //   Col B Charge Moves x: 380
+  //   Col C Shiny        x: 720
+  // ────────────────────────────────────────────────────────────────────
+  const S2_Y   = S1_H + 28;
+  const MCOL_A = P;
+  const MCOL_B = 380;
+  const MCOL_C = 720;
 
-  const MHEAD_FONT  = '800 24px Inter, sans-serif';
-  const MNAME_FONT  = '600 19px Inter, sans-serif';
-  const MICON_S     = 26;
-  const MROW_H      = 38;
+  const HEAD_FONT = '800 24px Inter, sans-serif';
+  const MOVE_FONT = '600 20px Inter, sans-serif';
+  const MOVE_H    = 42;   // row height per move
 
-  // Section headers
-  ctx.textBaseline = 'alphabetic';
-  drawTxt(ctx, 'Fast Moves',   COL1_X, B_Y + 24, { font: MHEAD_FONT, fill: '#fff', align: 'left' });
-  drawTxt(ctx, 'Charge Moves', COL2_X, B_Y + 24, { font: MHEAD_FONT, fill: '#fff', align: 'left' });
-  drawTxt(ctx, 'Shiny',        COL3_X, B_Y + 24, { font: MHEAD_FONT, fill: '#fff', align: 'left' });
+  rc_txt(ctx, 'Fast Moves',   MCOL_A, S2_Y + 24, HEAD_FONT, '#fff');
+  rc_txt(ctx, 'Charge Moves', MCOL_B, S2_Y + 24, HEAD_FONT, '#fff');
+  rc_txt(ctx, 'Shiny',        MCOL_C, S2_Y + 24, HEAD_FONT, '#fff');
 
-  const drawMoveList = (moves, baseX, baseY) => {
-    if (moves.length === 0) {
-      ctx.textBaseline = 'alphabetic';
-      drawTxt(ctx, '—', baseX + 8, baseY + 22, { font: MNAME_FONT, fill: 'rgba(255,255,255,0.3)', align: 'left' });
+  const drawMoves = (list, colX, startY) => {
+    if (list.length === 0) {
+      rc_txt(ctx, '—', colX + 8, startY + 22, MOVE_FONT, 'rgba(255,255,255,0.3)');
       return;
     }
-    moves.forEach((m, i) => {
-      const ry  = baseY + i * MROW_H;
-      const mi  = imgs[`ti_${m.type}`];
-      if (mi) {
-        ctx.drawImage(mi, baseX, ry, MICON_S, MICON_S);
-      }
-      ctx.textBaseline = 'middle';
-      drawTxt(ctx, m.name, baseX + MICON_S + 8, ry + MICON_S / 2, {
-        font: MNAME_FONT, fill: '#f0f0f6', align: 'left',
-        maxW: 200,
-      });
-      ctx.textBaseline = 'alphabetic';
+    list.forEach((m, i) => {
+      const rowMidY = startY + i * MOVE_H + MOVE_H / 2;
+      // Coloured type dot
+      rc_typeDot(ctx, m.type, colX + 16, rowMidY, 16);
+      // Move name
+      rc_txtMid(ctx, m.name, colX + 42, rowMidY, MOVE_FONT, '#f0f0f6', 'left', 290);
     });
   };
 
-  drawMoveList(fastMoves,   COL1_X, B_Y + 38);
-  drawMoveList(chargeMoves, COL2_X, B_Y + 38);
+  drawMoves(fastMoves,   MCOL_A, S2_Y + 34);
+  drawMoves(chargeMoves, MCOL_B, S2_Y + 34);
 
   // Shiny sprite
   if (imgs.shiny) {
-    ctx.drawImage(imgs.shiny, COL3_X, B_Y + 28, 230, 230);
+    ctx.drawImage(imgs.shiny, MCOL_C, S2_Y + 28, 230, 230);
   } else {
-    ctx.textBaseline = 'alphabetic';
-    drawTxt(ctx, 'N/A', COL3_X + 40, B_Y + 120, { font: '600 20px Inter, sans-serif', fill: 'rgba(255,255,255,0.3)', align: 'left' });
+    rc_txt(ctx, 'N/A', MCOL_C + 50, S2_Y + 100, MOVE_FONT, 'rgba(255,255,255,0.3)');
   }
 
   // ── Divider 2 ─────────────────────────────────────────────────────────
-  const SPLIT2 = B_Y + 270;
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+  const S3_TOP = S2_Y + 280;
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
   ctx.lineWidth   = 1;
-  ctx.beginPath();
-  ctx.moveTo(PAD, SPLIT2); ctx.lineTo(CW - PAD, SPLIT2);
-  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(P, S3_TOP); ctx.lineTo(CARD_W - P, S3_TOP); ctx.stroke();
 
-  // ══════════════════════ SECTION C: counters ═══════════════════════════
-  const C_Y   = SPLIT2 + 16;
-  const CTR_W = (CW - PAD * 2) / 6;
+  // ────────────────────────────────────────────────────────────────────
+  // SECTION 3 — counters  (y: S3_TOP → CH - footer)
+  // ────────────────────────────────────────────────────────────────────
+  const C_Y   = S3_TOP + 16;
+  const C_IW  = (CARD_W - P * 2) / 6;
 
-  ctx.textBaseline = 'alphabetic';
-  drawTxt(ctx, 'Top Counters', PAD, C_Y + 28, { font: '800 26px Inter, sans-serif', fill: '#fff', align: 'left' });
+  rc_txt(ctx, 'Top Counters', P, C_Y + 28, '800 26px Inter, sans-serif', '#fff');
 
-  const C_IMG_Y  = C_Y + 40;
-  const C_IMG_S  = 120;
-  const C_NAME_Y = C_IMG_Y + C_IMG_S + 8;
-  const C_EFF_Y  = C_NAME_Y + 22;
-  const C_ICON_Y = C_EFF_Y + 18;
+  const CI_Y  = C_Y + 44;   // sprite top
+  const CI_S  = 120;        // sprite size
+  const CN_Y  = CI_Y + CI_S + 14;   // name y
+  const CE_Y  = CN_Y + 24;          // eff label y
+  const CD_Y  = CE_Y + 20;          // type dot centre y
 
   for (let ci = 0; ci < counters.length; ci++) {
     const c   = counters[ci];
-    const cx  = PAD + ci * CTR_W;
-    const mid = cx + CTR_W / 2;
+    const cx  = P + ci * C_IW;
+    const mid = cx + C_IW / 2;
 
     // Sprite
     const cImg = imgs[`ctr_${c.name}`];
-    if (cImg) {
-      ctx.drawImage(cImg, cx + (CTR_W - C_IMG_S) / 2, C_IMG_Y, C_IMG_S, C_IMG_S);
-    }
+    if (cImg) ctx.drawImage(cImg, cx + (C_IW - CI_S) / 2, CI_Y, CI_S, CI_S);
 
     // Name
-    ctx.textBaseline = 'alphabetic';
-    drawTxt(ctx, fmtName(c.name), mid, C_NAME_Y, {
-      font: '700 17px Inter, sans-serif', fill: '#f0f0f6', align: 'center', maxW: CTR_W - 6,
-    });
+    rc_txt(ctx, fmtName(c.name), mid, CN_Y, '700 17px Inter, sans-serif', '#f0f0f6', 'center', C_IW - 8);
 
     // Effectiveness
-    const effLabel = c.eff >= 3.9 ? '4×' : c.eff >= 2.5 ? '2.56×' : c.eff >= 1.95 ? '2×' : '1.6×';
-    const effColor = c.eff >= 3.9 ? '#f87171' : c.eff >= 2.5 ? '#fb923c' : c.eff >= 1.95 ? '#fbbf24' : '#a3e635';
-    drawTxt(ctx, effLabel, mid, C_EFF_Y, {
-      font: '700 15px Inter, sans-serif', fill: effColor, align: 'center',
-    });
+    const effL = c.eff >= 3.9 ? '4×' : c.eff >= 2.5 ? '2.56×' : c.eff >= 1.95 ? '2×' : '1.6×';
+    const effC = c.eff >= 3.9 ? '#f87171' : c.eff >= 2.5 ? '#fb923c' : c.eff >= 1.95 ? '#fbbf24' : '#a3e635';
+    rc_txt(ctx, effL, mid, CE_Y, '700 15px Inter, sans-serif', effC, 'center');
 
-    // Best type icon
-    const bImg = imgs[`ti_${c.bestMoveType}`];
-    if (bImg) ctx.drawImage(bImg, mid - 12, C_ICON_Y, 24, 24);
+    // Best move type dot
+    rc_typeDot(ctx, c.bestMoveType, mid, CD_Y + 12, 14);
   }
 
   // ── Footer ────────────────────────────────────────────────────────────
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.fillRect(0, CH - 46, CW, 46);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  ctx.fillRect(0, CARD_H - 46, CARD_W, 46);
 
-  ctx.textBaseline = 'middle';
-  const FY = CH - 23;
-  drawTxt(ctx, 'GO Dex',                                          PAD,     FY, { font: '700 18px Inter, sans-serif',  fill: 'rgba(255,255,255,0.5)',  align: 'left'   });
-  drawTxt(ctx, 'Data: PokéAPI · pokemon-go-api · LeekDuck / ScrapedDuck', CW / 2, FY, { font: '500 15px Inter, sans-serif',  fill: 'rgba(255,255,255,0.3)',  align: 'center' });
-  drawTxt(ctx, 'Not affiliated with Niantic or Nintendo',         CW-PAD, FY, { font: '500 13px Inter, sans-serif',  fill: 'rgba(255,255,255,0.2)',  align: 'right'  });
-  ctx.textBaseline = 'alphabetic';
+  const FMY = CARD_H - 23;
+  rc_txtMid(ctx, 'GO Dex',
+    P, FMY, '700 18px Inter, sans-serif', 'rgba(255,255,255,0.5)');
+  rc_txtMid(ctx, 'Data: PokéAPI · pokemon-go-api · LeekDuck / ScrapedDuck',
+    CARD_W / 2, FMY, '500 15px Inter, sans-serif', 'rgba(255,255,255,0.3)', 'center');
+  rc_txtMid(ctx, 'Not affiliated with Niantic or Nintendo',
+    CARD_W - P, FMY, '500 13px Inter, sans-serif', 'rgba(255,255,255,0.2)', 'right');
 }
 
-// ── React modal component ─────────────────────────────────────────────────
+// ═══════════════════════════ REACT MODAL ═════════════════════════════════
+
 function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
-  const canvasRef  = React.useRef(null);
+  const canvasRef = React.useRef(null);
   const [status,  setStatus]  = React.useState('rendering');
   const [dataUrl, setDataUrl] = React.useState(null);
 
@@ -459,23 +447,21 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
     setStatus('rendering');
     setDataUrl(null);
 
-    drawRaidCard(canvasRef.current, poke, species, gs, shadowType)
+    rc_draw(canvasRef.current, poke, species, gs, shadowType)
       .then(() => {
         try {
           setDataUrl(canvasRef.current.toDataURL('image/png'));
-          setStatus('done');
-        } catch {
-          setStatus('done'); // canvas visible but download may be blocked by CORS
-        }
+        } catch { /* CORS tainted canvas — preview still works */ }
+        setStatus('done');
       })
-      .catch(err => { console.error(err); setStatus('error'); });
+      .catch(err => { console.error('Raid card error:', err); setStatus('error'); });
   }, [poke?.name, gs, shadowType]);
 
   const download = () => {
     if (!dataUrl) return;
     const a = document.createElement('a');
     a.href     = dataUrl;
-    a.download = `${fmtName(poke.name).replace(/\s+/g,'_')}_raid_card.png`;
+    a.download = `${fmtName(poke.name).replace(/\s+/g, '_')}_raid_card.png`;
     a.click();
   };
 
@@ -484,7 +470,7 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       style={{
         position: 'fixed', inset: 0, zIndex: 1000,
-        background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(6px)',
+        background: 'rgba(0,0,0,0.88)', backdropFilter: 'blur(6px)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 16, overflowY: 'auto',
       }}
@@ -493,9 +479,9 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
         background: 'var(--s1)', borderRadius: 18, border: '1px solid var(--border2)',
         padding: 20, maxWidth: 720, width: '100%',
         display: 'flex', flexDirection: 'column', gap: 14,
-        boxShadow: '0 32px 80px rgba(0,0,0,.9)',
+        boxShadow: '0 32px 80px rgba(0,0,0,.95)',
       }}>
-        {/* Header row */}
+        {/* Title row */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
             <div style={{ fontWeight: 800, fontSize: 16 }}>Raid Card Export</div>
@@ -504,7 +490,7 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
           <button className="btn" onClick={onClose}>✕ Close</button>
         </div>
 
-        {/* Loading state */}
+        {/* Status */}
         {status === 'rendering' && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--muted)', fontSize: 13 }}>
             <Spinner /> Loading sprites &amp; building card…
@@ -515,11 +501,11 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
         )}
 
         {/* Canvas preview */}
-        <div style={{ borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', lineHeight: 0 }}>
+        <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', lineHeight: 0 }}>
           <canvas ref={canvasRef} style={{ width: '100%', height: 'auto', display: 'block' }} />
         </div>
 
-        {/* Actions */}
+        {/* Download */}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button
             className={`btn${dataUrl ? ' primary' : ''}`}
@@ -527,7 +513,7 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
             style={!dataUrl ? { opacity: 0.4 } : {}}
             onClick={download}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 6 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
               <line x1="12" y1="15" x2="12" y2="3"/>
@@ -538,7 +524,7 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
         </div>
 
         <p style={{ fontSize: 11, color: 'var(--dim)', textAlign: 'center', margin: 0 }}>
-          Data from PokéAPI · pokemon-go-api · LeekDuck / ScrapedDuck · Not affiliated with Niantic or Nintendo
+          Data: PokéAPI · pokemon-go-api · LeekDuck / ScrapedDuck · Not affiliated with Niantic or Nintendo
         </p>
       </div>
     </div>
