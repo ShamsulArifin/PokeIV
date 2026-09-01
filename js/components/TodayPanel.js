@@ -49,7 +49,6 @@ function raidNameToSlug(name) {
 
   // Regional/form prefixes that PokéAPI appends as suffixes
   const REGIONAL = ['alolan', 'galarian', 'hisuian', 'paldean'];
-  const FORM_PREFIXES = ['mega', 'primal', 'origin', 'sky', 'shadow'];
 
   const words = base.split(/\s+/);
   const firstWord = words[0].toLowerCase();
@@ -58,8 +57,10 @@ function raidNameToSlug(name) {
 
   if (REGIONAL.includes(firstWord)) {
     // "Alolan Marowak" → "marowak-alolan"
+    // "Paldean Tauros" → "tauros-paldea" (PokeAPI uses "paldea" not "paldean")
+    const suffix = firstWord === 'paldean' ? 'paldea' : firstWord;
     const rest = words.slice(1).join('-').toLowerCase();
-    slug = `${rest}-${firstWord}`;
+    slug = `${rest}-${suffix}`;
   } else if (firstWord === 'mega') {
     // "Mega Charizard X" → "charizard-mega-x"
     // "Mega Lopunny"     → "lopunny-mega"
@@ -79,8 +80,12 @@ function raidNameToSlug(name) {
     slug = `${slug}-${parenSuffix}`;
   }
 
-  // Remove any double-dashes
-  slug = slug.replace(/--+/g, '-');
+  // PokeAPI-specific form suffix corrections
+  slug = slug
+    .replace(/-rapid-strike$/, '-rapid-strike-style')
+    .replace(/-single-strike$/, '-single-strike-style')
+    .replace(/-hero-of-many-battles$/, '')       // Zacian/Zamazenta base form
+    .replace(/--+/g, '-');                        // collapse any double-dashes
 
   return slug;
 }

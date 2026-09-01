@@ -207,16 +207,26 @@ function MovesPanel({ poke }) {
     );
   }
 
-  const fastMoves       = toMoveArr(goEntry.quickMoves).sort((a, b) => (fastDPS(b) || 0) - (fastDPS(a) || 0));
-  const chargeMoves     = toMoveArr(goEntry.cinematicMoves).sort((a, b) => (chargeDPE(b) || 0) - (chargeDPE(a) || 0));
-  const eliteFast       = toMoveArr(goEntry.eliteQuickMoves);
-  const eliteCharge     = toMoveArr(goEntry.eliteCinematicMoves);
+  const fastMoves   = toMoveArr(goEntry.quickMoves);
+  const chargeMoves = toMoveArr(goEntry.cinematicMoves);
+  const eliteFast   = toMoveArr(goEntry.eliteQuickMoves);
+  const eliteCharge = toMoveArr(goEntry.eliteCinematicMoves);
 
-  const allFast   = [...fastMoves,   ...eliteFast];
-  const allCharge = [...chargeMoves, ...eliteCharge];
+  // Deduplicate: elite moves may overlap with regular moves.
+  // Treat them as legacy-flagged and merge into a single sorted list.
+  const regularFastIds   = new Set(fastMoves.map(m => m.id));
+  const regularChargeIds = new Set(chargeMoves.map(m => m.id));
+
+  // Elite-only = moves that are NOT already in the regular pool
+  const eliteFastOnly   = eliteFast.filter(m => !regularFastIds.has(m.id));
+  const eliteChargeOnly = eliteCharge.filter(m => !regularChargeIds.has(m.id));
 
   const eliteFastIds   = new Set(eliteFast.map(m => m.id));
   const eliteChargeIds = new Set(eliteCharge.map(m => m.id));
+
+  // Merge and sort everything by DPS / DPE descending
+  const allFast   = [...fastMoves,   ...eliteFastOnly  ].sort((a, b) => (fastDPS(b)   || 0) - (fastDPS(a)   || 0));
+  const allCharge = [...chargeMoves, ...eliteChargeOnly].sort((a, b) => (chargeDPE(b) || 0) - (chargeDPE(a) || 0));
 
   const S = {
     fontSize: 10, fontWeight: 700,

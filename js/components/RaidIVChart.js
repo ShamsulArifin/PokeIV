@@ -9,6 +9,9 @@ function RaidIVChart({ poke, gs }) {
   const [sort, setSort]     = React.useState('iv');
   const [top, setTop]       = React.useState(50);
 
+  // Reset filters and pagination when Pokémon changes
+  React.useEffect(() => { setTop(50); setMin(''); setMax(''); setIvf('all'); setEncKey('raid'); }, [poke?.id]);
+
   const enc = ENC[encKey];
 
   const allRows = React.useMemo(() => {

@@ -6,6 +6,9 @@ function IVChart({ poke, gs }) {
   const [sort, setSort] = React.useState('iv');
   const [top, setTop]   = React.useState(50);
 
+  // Reset pagination when Pokémon changes
+  React.useEffect(() => { setTop(50); setMin(''); setMax(''); setIvf('all'); }, [poke?.id]);
+
   // Build all 4096 IV rows whenever gs or level changes
   const allRows = React.useMemo(() => {
     if (!gs) return [];
