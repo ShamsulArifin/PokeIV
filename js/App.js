@@ -10,6 +10,7 @@ function App() {
   const [tab, setTab]         = React.useState('info');
   const [mode, setMode]       = React.useState('dex');
   const [showDex, setShowDex] = React.useState(false);
+  const [showExport, setShowExport] = React.useState(false);
 
   const typeColor = poke ? (TYPE_COLORS[poke.types[0].type.name] || 'var(--accent)') : 'var(--accent)';
 
@@ -164,7 +165,27 @@ function App() {
                     {tab === 'info'     && <DetailPanel  poke={poke} species={species} gs={gs} />}
                     {tab === 'cp'       && <CPCalc        poke={poke} gs={gs} />}
                     {tab === 'iv'       && <IVChart       poke={poke} gs={gs} />}
-                    {tab === 'raid'     && <RaidIVChart   poke={poke} gs={gs} />}
+                    {tab === 'raid'     && (
+                      <div>
+                        <RaidIVChart poke={poke} gs={gs} />
+                        {gs && (
+                          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                            <button
+                              className="btn primary"
+                              style={{ gap: 8 }}
+                              onClick={() => setShowExport(true)}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                              </svg>
+                              Export Raid Card
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {tab === 'counters' && <RaidCounters  poke={poke} />}
                     {tab === 'evo'      && (
                       <div>
@@ -196,6 +217,17 @@ function App() {
         {' · '}GO stats from <a href="https://pokemon-go-api.github.io/pokemon-go-api/" target="_blank" rel="noopener" style={{ color: 'var(--accent-light)' }}>pokemon-go-api</a>
         {' · '}Not affiliated with Niantic or Nintendo
       </footer>
+
+      {/* ── Raid Export Modal ─────────────────────── */}
+      {showExport && poke && gs && (
+        <RaidExportCard
+          poke={poke}
+          species={species}
+          gs={gs}
+          shadowType={shadow}
+          onClose={() => setShowExport(false)}
+        />
+      )}
     </div>
   );
 }
