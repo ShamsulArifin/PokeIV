@@ -168,6 +168,7 @@ function App() {
                     {tab === 'iv'       && <IVChart       poke={poke} gs={gs} />}
                     {tab === 'raid'     && <RaidIVChart poke={poke} gs={gs} />}
                     {tab === 'counters' && <RaidCounters  poke={poke} />}
+                    {tab === 'moves'    && <MovesPanel    poke={poke} />}
                     {tab === 'evo'      && (
                       <div>
                         <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.07em', color: 'var(--muted)', marginBottom: 12 }}>Evolution Chain</div>

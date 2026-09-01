@@ -156,8 +156,9 @@ function MovesPanel({ poke }) {
     setGoEntry(null);
 
     // 1. Try in-memory maps (populated by fetchList on DexGrid mount)
+    const formIdKey = poke.name.toUpperCase().replace(/-/g, '_');
     let entry = goPokedexByName[poke.name]
-             || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
+             || goPokedexByFormId[formIdKey]
              || null;
 
     if (entry) {
@@ -166,18 +167,26 @@ function MovesPanel({ poke }) {
       return;
     }
 
-    // 2. Try per-pokémon endpoint (dex number is reliable)
-    const dexId = poke.id;
-    fetch(`https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${dexId}.json`)
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d) {
-          const found = Array.isArray(d) ? d[0] : d;
-          setGoEntry(found);
-        }
+    // 2. Ensure fetchList has run, then re-check maps
+    fetchList().then(() => {
+      const found = goPokedexByName[poke.name]
+                 || goPokedexByFormId[formIdKey]
+                 || null;
+      if (found) {
+        setGoEntry(found);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+        return;
+      }
+
+      // 3. Last resort: fetch by dex number (only reliable for base forms)
+      fetch(`https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${poke.id}.json`)
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (d) setGoEntry(Array.isArray(d) ? d[0] : d);
+          setLoading(false);
+        })
+        .catch(() => setLoading(false));
+    }).catch(() => setLoading(false));
   }, [poke?.name]);
 
   if (!poke) return null;
