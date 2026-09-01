@@ -6,6 +6,9 @@ const CARD_W = 1080;
 const CARD_H = 1260;
 const P      = 44;   // outer padding
 
+// Type icon URL proxied through weserv.nl for CORS-safe canvas drawing
+const RC_TYPE_ICON = t => `https://images.weserv.nl/?url=assets.dittobase.com/go/types/${t}.png`;
+
 // ═══════════════════════════ CANVAS HELPERS ═══════════════════════════════
 
 function rc_loadImg(src) {
@@ -13,7 +16,7 @@ function rc_loadImg(src) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload  = () => res(img);
-    img.onerror = () => res(null);   // resolve null on error — never reject
+    img.onerror = () => res(null);   // never reject
     img.src = src;
   });
 }
@@ -58,61 +61,91 @@ function rc_txtMid(ctx, text, x, midY, font, fill, align = 'left', maxW) {
   ctx.textBaseline = 'alphabetic';
 }
 
-// ── Type badge drawn entirely on canvas (no external image needed) ─────────
-// Draws a pill with coloured background and white label
-function rc_typePill(ctx, typeName, x, y) {
+// ── Type badge drawn using real dittobase icon (CORS-proxied) ─────────────
+// imgs must contain `ti_{typeName}` loaded via RC_TYPE_ICON
+function rc_typePill(ctx, typeName, x, y, imgs) {
   const col  = TYPE_COLORS[typeName] || '#888';
   const FONT = '700 21px Inter, sans-serif';
   ctx.font   = FONT;
   const lw   = ctx.measureText(cap(typeName)).width;
-  const bw   = lw + 28;
-  const bh   = 36;
+  const ICON = 26;
+  const bw   = 10 + ICON + 8 + lw + 12;
+  const bh   = 38;
 
-  rc_rrect(ctx, x, y, bw, bh, 18);
-  ctx.fillStyle   = col;
+  // Pill background
+  rc_rrect(ctx, x, y, bw, bh, 19);
+  ctx.fillStyle   = rc_hexA(col, 0.22);
   ctx.fill();
-  // Slight dark overlay for readability
-  rc_rrect(ctx, x, y, bw, bh, 18);
-  ctx.fillStyle   = 'rgba(0,0,0,0.25)';
-  ctx.fill();
-
-  rc_txtMid(ctx, cap(typeName), x + bw / 2, y + bh / 2, FONT, '#ffffff', 'center');
-  return bw;
-}
-
-// ── Small circular type dot for move list and weakness row ─────────────────
-function rc_typeDot(ctx, typeName, cx, cy, r = 16) {
-  const col = TYPE_COLORS[typeName] || '#888';
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.fillStyle   = col;
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+  ctx.strokeStyle = rc_hexA(col, 0.7);
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
-  // 2-letter abbreviation
-  const abbr = (typeName || '').slice(0, 2).toUpperCase();
-  rc_txtMid(ctx, abbr, cx, cy, `700 ${r * 0.9}px Inter, sans-serif`, '#fff', 'center');
+  // Icon
+  const tImg = imgs?.[`ti_${typeName}`];
+  if (tImg) {
+    ctx.drawImage(tImg, x + 10, y + (bh - ICON) / 2, ICON, ICON);
+  } else {
+    // Fallback: coloured dot
+    ctx.beginPath();
+    ctx.arc(x + 10 + ICON / 2, y + bh / 2, ICON / 2, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+  }
+
+  // Label
+  rc_txtMid(ctx, cap(typeName), x + 10 + ICON + 8, y + bh / 2, FONT, col);
+  return bw;
+}
+
+// ── Inline type icon for move list / weakness row ─────────────────────────
+// Draws the real dittobase icon at (x, midY-r) with size 2r
+function rc_typeIcon(ctx, typeName, x, midY, r, imgs) {
+  const col  = TYPE_COLORS[typeName] || '#888';
+  const tImg = imgs?.[`ti_${typeName}`];
+  const d    = r * 2;
+  if (tImg) {
+    ctx.drawImage(tImg, x, midY - r, d, d);
+  } else {
+    // Fallback circle
+    ctx.beginPath();
+    ctx.arc(x + r, midY, r, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1.5; ctx.stroke();
+    rc_txtMid(ctx, (typeName||'').slice(0,2).toUpperCase(),
+      x + r, midY, `700 ${Math.round(r * 0.9)}px Inter, sans-serif`, '#fff', 'center');
+  }
 }
 
 // ═══════════════════════════ IMAGE LOADER ═════════════════════════════════
 
-async function rc_loadImages(poke, counters) {
+async function rc_loadImages(poke, counters, goEntry) {
   const jobs = {};
 
-  // Main sprite (official artwork preferred)
-  const mainSrc  = poke.sprites?.other?.['official-artwork']?.front_default
-                || poke.sprites?.other?.home?.front_default
-                || poke.sprites?.front_default || '';
-  const shinySrc = poke.sprites?.other?.['official-artwork']?.front_shiny
-                || poke.sprites?.other?.home?.front_shiny
-                || poke.sprites?.front_shiny || '';
+  // ── Pokémon sprites ─────────────────────────────────────────────────────
+  // Use GO in-game sprite first (same as what the app shows via goEntry.assets)
+  // then fall back to PokeAPI official artwork (also CORS-safe via raw.github)
+  const goMainSrc  = goEntry?.assets?.image      || '';
+  const goShinySrc = goEntry?.assets?.shinyImage || '';
+
+  const mainSrc = goMainSrc
+    || poke.sprites?.other?.['official-artwork']?.front_default
+    || poke.sprites?.other?.home?.front_default
+    || poke.sprites?.front_default || '';
+
+  const shinySrc = goShinySrc
+    || poke.sprites?.other?.['official-artwork']?.front_shiny
+    || poke.sprites?.other?.home?.front_shiny
+    || poke.sprites?.front_shiny || '';
 
   if (mainSrc)  jobs.main  = rc_loadImg(mainSrc);
   if (shinySrc) jobs.shiny = rc_loadImg(shinySrc);
 
-  // Counter sprites
+  // ── Type icons (proxied through weserv.nl for CORS) ─────────────────────
+  for (const t of Object.keys(TYPE_COLORS)) {
+    jobs[`ti_${t}`] = rc_loadImg(RC_TYPE_ICON(t));
+  }
+
+  // ── Counter sprites (PokeAPI HOME sprites — CORS via GitHub CDN) ──────────
   for (const c of counters) {
     jobs[`ctr_${c.name}`] = fetchPoke(c.name)
       .then(p => {
@@ -199,7 +232,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   }));
 
   // ── Load images ───────────────────────────────────────────────────────
-  const imgs = await rc_loadImages(poke, counters);
+  const imgs = await rc_loadImages(poke, counters, goEntry);
 
   // ════════════════════════ RENDER ════════════════════════════════════
 
@@ -255,7 +288,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   let tx = LEFT_X;
   const TYPE_ROW_Y = P + 158;
   for (const t of types) {
-    const bw = rc_typePill(ctx, t, tx, TYPE_ROW_Y);
+    const bw = rc_typePill(ctx, t, tx, TYPE_ROW_Y, imgs);
     tx += bw + 10;
   }
 
@@ -314,7 +347,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   const DOT_SP = DOT_R * 2 + 6;
   for (const wt of weakTypes) {
     if (wx + DOT_R * 2 > LEFT_X + LEFT_W) break;
-    rc_typeDot(ctx, wt, wx + DOT_R, IY - DOT_R + 4, DOT_R);
+    rc_typeIcon(ctx, wt, wx, IY - DOT_R + 4, DOT_R, imgs);
     wx += DOT_SP;
   }
   IY += IL;
@@ -364,8 +397,8 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     }
     list.forEach((m, i) => {
       const rowMidY = startY + i * MOVE_H + MOVE_H / 2;
-      // Coloured type dot
-      rc_typeDot(ctx, m.type, colX + 16, rowMidY, 16);
+      // Real type icon
+      rc_typeIcon(ctx, m.type, colX, rowMidY, 16, imgs);
       // Move name
       rc_txtMid(ctx, m.name, colX + 42, rowMidY, MOVE_FONT, '#f0f0f6', 'left', 290);
     });
@@ -418,8 +451,8 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     const effC = c.eff >= 3.9 ? '#f87171' : c.eff >= 2.5 ? '#fb923c' : c.eff >= 1.95 ? '#fbbf24' : '#a3e635';
     rc_txt(ctx, effL, mid, CE_Y, '700 15px Inter, sans-serif', effC, 'center');
 
-    // Best move type dot
-    rc_typeDot(ctx, c.bestMoveType, mid, CD_Y + 12, 14);
+    // Best move type icon
+    rc_typeIcon(ctx, c.bestMoveType, mid - 14, CD_Y + 12, 14, imgs);
   }
 
   // ── Footer ────────────────────────────────────────────────────────────
