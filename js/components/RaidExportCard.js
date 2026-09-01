@@ -144,12 +144,36 @@ async function drawRaidCard(canvas, poke, species, gs, shadowType) {
   // Counters
   const counters = scoredCounters(types).slice(0, 6);
 
-  // GO API entry for moves
-  const goEntry = goPokedexByFormId[poke.formId]
-               || goPokedexByFormId[(poke.formId||'').toUpperCase()]
-               || null;
-  const fastMoves   = (goEntry?.quickMoves        || []).slice(0, 4).map(m => ({ name: m.names?.English || m.id, type: goTypeToSlug(m.type?.type || '') }));
-  const chargeMoves = (goEntry?.cinematicMoves    || []).slice(0, 4).map(m => ({ name: m.names?.English || m.id, type: goTypeToSlug(m.type?.type || '') }));
+  // GO API entry for moves — quickMoves/cinematicMoves are OBJECTS keyed by move ID
+  // goPokedexByFormId is populated by fetchList(); fetch directly if missing.
+  let goEntry = goPokedexByFormId[poke.formId]
+             || goPokedexByFormId[(poke.formId||'').toUpperCase()]
+             || goPokedexByName[poke.name]
+             || null;
+
+  if (!goEntry) {
+    // Direct fetch fallback
+    try {
+      const fid = (poke.formId || poke.name).toUpperCase().replace(/-/g, '_');
+      const r = await fetch(`https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${fid}.json`);
+      if (r.ok) {
+        const data = await r.json();
+        goEntry = Array.isArray(data) ? data[0] : data;
+      }
+    } catch { /* leave goEntry null */ }
+  }
+
+  // Convert object → array, fall back gracefully if missing
+  const toMoveArray = obj => obj ? Object.values(obj) : [];
+
+  const fastMoves   = toMoveArray(goEntry?.quickMoves).slice(0, 4).map(m => ({
+    name: m.names?.English || m.id || '?',
+    type: goTypeToSlug(m.type?.type || ''),
+  }));
+  const chargeMoves = toMoveArray(goEntry?.cinematicMoves).slice(0, 4).map(m => ({
+    name: m.names?.English || m.id || '?',
+    type: goTypeToSlug(m.type?.type || ''),
+  }));
 
   // Pre-load images
   const imgs = await loadAllImages(poke, counters);
