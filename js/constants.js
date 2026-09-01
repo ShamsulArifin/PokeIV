@@ -59,8 +59,147 @@ const WEATHER = {
 // Ordering within each type reflects current DPS/TDO rankings.
 // Shadow & Mega forms share the base PokeAPI slug (shadow handled in scoredCounters).
 const COUNTERS = [
+  // ── Mega / Primal (listed first so they score highest when type matches) ──
+  {name:'rayquaza-mega',      types:['dragon','flying'],   move:'dragon'},
+  {name:'garchomp-mega',      types:['dragon','ground'],   move:'dragon'},
+  {name:'salamence-mega',     types:['dragon','flying'],   move:'dragon'},
+  {name:'latios-mega',        types:['dragon','psychic'],  move:'dragon'},
+  {name:'charizard-mega-x',   types:['fire','dragon'],     move:'fire'},
+  {name:'charizard-mega-y',   types:['fire','flying'],     move:'fire'},
+  {name:'mewtwo-mega-x',      types:['psychic','fighting'],move:'psychic'},
+  {name:'mewtwo-mega-y',      types:['psychic'],           move:'psychic'},
+  {name:'gengar-mega',        types:['ghost','poison'],    move:'ghost'},
+  {name:'lucario-mega',       types:['fighting','steel'],  move:'fighting'},
+  {name:'blaziken-mega',      types:['fire','fighting'],   move:'fighting'},
+  {name:'lopunny-mega',       types:['normal','fighting'], move:'fighting'},
+  {name:'heracross-mega',     types:['bug','fighting'],    move:'fighting'},
+  {name:'tyranitar-mega',     types:['rock','dark'],       move:'rock'},
+  {name:'gyarados-mega',      types:['water','dark'],      move:'water'},
+  {name:'swampert-mega',      types:['water','ground'],    move:'water'},
+  {name:'blastoise-mega',     types:['water'],             move:'water'},
+  {name:'manectric-mega',     types:['electric'],          move:'electric'},
+  {name:'sceptile-mega',      types:['grass','dragon'],    move:'grass'},
+  {name:'beedrill-mega',      types:['bug','poison'],      move:'bug'},
+  {name:'aerodactyl-mega',    types:['rock','flying'],     move:'rock'},
+  {name:'diancie-mega',       types:['rock','fairy'],      move:'rock'},
+  {name:'banette-mega',       types:['ghost'],             move:'ghost'},
+  {name:'pinsir-mega',        types:['bug','flying'],      move:'bug'},
+  {name:'houndoom-mega',      types:['dark','fire'],       move:'dark'},
+  {name:'ampharos-mega',      types:['electric','dragon'], move:'electric'},
+
   // ── Dragon ────────────────────────────────────────────────────────────
   {name:'rayquaza',         types:['dragon','flying'],   move:'dragon'},
+  {name:'garchomp',         types:['dragon','ground'],   move:'dragon'},
+  {name:'dragonite',        types:['dragon','flying'],   move:'dragon'},
+  {name:'salamence',        types:['dragon','flying'],   move:'dragon'},
+  {name:'haxorus',          types:['dragon'],            move:'dragon'},
+  {name:'dragapult',        types:['dragon','ghost'],    move:'dragon'},
+  {name:'kyurem',           types:['dragon','ice'],      move:'dragon'},
+
+  // ── Psychic ───────────────────────────────────────────────────────────
+  {name:'mewtwo',           types:['psychic'],           move:'psychic'},
+  {name:'latios',           types:['dragon','psychic'],  move:'psychic'},
+  {name:'hoopa',            types:['psychic','ghost'],   move:'psychic'},
+  {name:'necrozma',         types:['psychic'],           move:'psychic'},
+  {name:'alakazam',         types:['psychic'],           move:'psychic'},
+
+  // ── Steel ─────────────────────────────────────────────────────────────
+  {name:'metagross',        types:['steel','psychic'],   move:'steel'},
+  {name:'melmetal',         types:['steel'],             move:'steel'},
+  {name:'zacian',           types:['fairy','steel'],     move:'steel'},
+  {name:'zamazenta',        types:['fighting','steel'],  move:'steel'},
+  {name:'dialga',           types:['steel','dragon'],    move:'steel'},
+  {name:'kartana',          types:['grass','steel'],     move:'steel'},
+  {name:'excadrill',        types:['ground','steel'],    move:'steel'},
+
+  // ── Water ─────────────────────────────────────────────────────────────
+  {name:'kyogre',           types:['water'],             move:'water'},
+  {name:'swampert',         types:['water','ground'],    move:'water'},
+  {name:'palkia',           types:['water','dragon'],    move:'water'},
+  {name:'keldeo',           types:['water','fighting'],  move:'water'},
+
+  // ── Fire ──────────────────────────────────────────────────────────────
+  {name:'reshiram',         types:['dragon','fire'],     move:'fire'},
+  {name:'charizard',        types:['fire','flying'],     move:'fire'},
+  {name:'moltres',          types:['fire','flying'],     move:'fire'},
+  {name:'entei',            types:['fire'],              move:'fire'},
+  {name:'chandelure',       types:['ghost','fire'],      move:'fire'},
+
+  // ── Electric ──────────────────────────────────────────────────────────
+  {name:'zekrom',           types:['dragon','electric'], move:'electric'},
+  {name:'raikou',           types:['electric'],          move:'electric'},
+  {name:'zapdos',           types:['electric','flying'], move:'electric'},
+  {name:'electivire',       types:['electric'],          move:'electric'},
+  {name:'xurkitree',        types:['electric'],          move:'electric'},
+  {name:'regieleki',        types:['electric'],          move:'electric'},
+
+  // ── Ice ───────────────────────────────────────────────────────────────
+  {name:'mamoswine',        types:['ice','ground'],      move:'ice'},
+  {name:'glaceon',          types:['ice'],               move:'ice'},
+  {name:'weavile',          types:['dark','ice'],        move:'ice'},
+
+  // ── Rock ──────────────────────────────────────────────────────────────
+  {name:'rampardos',        types:['rock'],              move:'rock'},
+  {name:'tyranitar',        types:['rock','dark'],       move:'rock'},
+  {name:'rhyperior',        types:['ground','rock'],     move:'rock'},
+  {name:'terrakion',        types:['rock','fighting'],   move:'rock'},
+  {name:'nihilego',         types:['rock','poison'],     move:'rock'},
+
+  // ── Fighting ─────────────────────────────────────────────────────────
+  {name:'lucario',          types:['fighting','steel'],  move:'fighting'},
+  {name:'machamp',          types:['fighting'],          move:'fighting'},
+  {name:'conkeldurr',       types:['fighting'],          move:'fighting'},
+  {name:'urshifu',          types:['fighting','water'],  move:'fighting'},
+  {name:'pheromosa',        types:['bug','fighting'],    move:'fighting'},
+
+  // ── Ground ────────────────────────────────────────────────────────────
+  {name:'groudon',          types:['ground'],            move:'ground'},
+  {name:'landorus-therian', types:['ground','flying'],   move:'ground'},
+
+  // ── Ghost ─────────────────────────────────────────────────────────────
+  {name:'gengar',           types:['ghost','poison'],    move:'ghost'},
+  {name:'giratina-origin',  types:['ghost','dragon'],    move:'ghost'},
+  {name:'chandelure',       types:['ghost','fire'],      move:'ghost'},
+  {name:'dragapult',        types:['dragon','ghost'],    move:'ghost'},
+  {name:'lunala',           types:['psychic','ghost'],   move:'ghost'},
+
+  // ── Dark ──────────────────────────────────────────────────────────────
+  {name:'darkrai',          types:['dark'],              move:'dark'},
+  {name:'hydreigon',        types:['dark','dragon'],     move:'dark'},
+  {name:'yveltal',          types:['dark','flying'],     move:'dark'},
+  {name:'tyranitar',        types:['rock','dark'],       move:'dark'},
+
+  // ── Fairy ─────────────────────────────────────────────────────────────
+  {name:'togekiss',         types:['fairy','flying'],    move:'fairy'},
+  {name:'gardevoir',        types:['psychic','fairy'],   move:'fairy'},
+  {name:'xerneas',          types:['fairy'],             move:'fairy'},
+  {name:'sylveon',          types:['fairy'],             move:'fairy'},
+  {name:'zacian',           types:['fairy','steel'],     move:'fairy'},
+
+  // ── Poison ────────────────────────────────────────────────────────────
+  {name:'nihilego',         types:['rock','poison'],     move:'poison'},
+  {name:'roserade',         types:['grass','poison'],    move:'poison'},
+  {name:'gengar',           types:['ghost','poison'],    move:'poison'},
+  {name:'eternatus',        types:['poison','dragon'],   move:'poison'},
+
+  // ── Grass ─────────────────────────────────────────────────────────────
+  {name:'kartana',          types:['grass','steel'],     move:'grass'},
+  {name:'roserade',         types:['grass','poison'],    move:'grass'},
+  {name:'tangrowth',        types:['grass'],             move:'grass'},
+  {name:'zarude',           types:['dark','grass'],      move:'grass'},
+
+  // ── Bug ───────────────────────────────────────────────────────────────
+  {name:'pheromosa',        types:['bug','fighting'],    move:'bug'},
+  {name:'genesect',         types:['bug','steel'],       move:'bug'},
+  {name:'volcarona',        types:['bug','fire'],        move:'bug'},
+  {name:'scizor',           types:['bug','steel'],       move:'bug'},
+
+  // ── Flying ────────────────────────────────────────────────────────────
+  {name:'rayquaza',         types:['dragon','flying'],   move:'flying'},
+  {name:'moltres',          types:['fire','flying'],     move:'flying'},
+  {name:'yveltal',          types:['dark','flying'],     move:'flying'},
+  {name:'landorus-therian', types:['ground','flying'],   move:'flying'},
+];
   {name:'garchomp',         types:['dragon','ground'],   move:'dragon'},
   {name:'dragonite',        types:['dragon','flying'],   move:'dragon'},
   {name:'salamence',        types:['dragon','flying'],   move:'dragon'},

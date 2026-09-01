@@ -122,19 +122,18 @@ async function rc_loadImages(poke, counters, goEntry) {
   const jobs = {};
 
   // ── Pokémon sprites ─────────────────────────────────────────────────────
-  // Use GO in-game sprite first (same as what the app shows via goEntry.assets)
-  // then fall back to PokeAPI official artwork (also CORS-safe via raw.github)
-  const goMainSrc  = goEntry?.assets?.image      || '';
-  const goShinySrc = goEntry?.assets?.shinyImage || '';
-
-  const mainSrc = goMainSrc
-    || poke.sprites?.other?.['official-artwork']?.front_default
+  // Prefer PokeAPI official artwork (high-res, CORS-safe) for the main card sprite.
+  // GO assets are lower-res icons. Fall through the chain until we find something.
+  const mainSrc =
+       poke.sprites?.other?.['official-artwork']?.front_default
     || poke.sprites?.other?.home?.front_default
+    || goEntry?.assets?.image
     || poke.sprites?.front_default || '';
 
-  const shinySrc = goShinySrc
-    || poke.sprites?.other?.['official-artwork']?.front_shiny
+  const shinySrc =
+       poke.sprites?.other?.['official-artwork']?.front_shiny
     || poke.sprites?.other?.home?.front_shiny
+    || goEntry?.assets?.shinyImage
     || poke.sprites?.front_shiny || '';
 
   if (mainSrc)  jobs.main  = rc_loadImg(mainSrc);
