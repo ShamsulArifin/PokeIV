@@ -1,4 +1,4 @@
-function PokemonCard({ poke, species, gs, isShiny, is3D, shadowType, onShiny, on3D }) {
+function PokemonCard({ poke, species, gs, isShiny, is3D, shadowType, onShiny, on3D, onExport }) {
   // gs may be null briefly while the API call resolves — show placeholders
   const types       = poke.types.map(t => t.type.name);
   const tc          = TYPE_COLORS[types[0]] || 'var(--accent)';
@@ -44,6 +44,21 @@ function PokemonCard({ poke, species, gs, isShiny, is3D, shadowType, onShiny, on
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end', flexShrink: 0 }}>
             <Toggle value={isShiny} onChange={onShiny} label="✨ Shiny" />
             <Toggle value={is3D}    onChange={on3D}    label="🎮 3D" />
+            {gs && onExport && (
+              <button
+                className="btn"
+                style={{ fontSize: 11, padding: '4px 10px', gap: 5, marginTop: 2 }}
+                onClick={onExport}
+                title="Export raid info card"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                Raid Card
+              </button>
+            )}
           </div>
         </div>
 

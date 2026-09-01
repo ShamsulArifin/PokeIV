@@ -145,7 +145,7 @@ function App() {
               )}
 
               {poke && !loading && (<>
-                <PokemonCard poke={poke} species={species} isShiny={isShiny} is3D={is3D} shadowType={shadow} gs={gs} onShiny={setIsShiny} on3D={setIs3D} />
+                <PokemonCard poke={poke} species={species} isShiny={isShiny} is3D={is3D} shadowType={shadow} gs={gs} onShiny={setIsShiny} on3D={setIs3D} onExport={() => setShowExport(true)} />
 
                 <div className="card" style={{ overflow: 'hidden' }}>
                   {/* Tab bar */}
@@ -165,27 +165,7 @@ function App() {
                     {tab === 'info'     && <DetailPanel  poke={poke} species={species} gs={gs} />}
                     {tab === 'cp'       && <CPCalc        poke={poke} gs={gs} />}
                     {tab === 'iv'       && <IVChart       poke={poke} gs={gs} />}
-                    {tab === 'raid'     && (
-                      <div>
-                        <RaidIVChart poke={poke} gs={gs} />
-                        {gs && (
-                          <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
-                            <button
-                              className="btn primary"
-                              style={{ gap: 8 }}
-                              onClick={() => setShowExport(true)}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                                <polyline points="7 10 12 15 17 10"/>
-                                <line x1="12" y1="15" x2="12" y2="3"/>
-                              </svg>
-                              Export Raid Card
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                    {tab === 'raid'     && <RaidIVChart poke={poke} gs={gs} />}
                     {tab === 'counters' && <RaidCounters  poke={poke} />}
                     {tab === 'evo'      && (
                       <div>
