@@ -27,7 +27,63 @@ const RESEARCH_TYPE_LABELS = {
   sponsored:'💼 Sponsored',
 };
 
-// ── Sub-components ──────────────────────────────────────────────────────────
+// ── Normalize a ScrapedDuck boss name → PokéAPI slug ──────────────────────
+// Examples:
+//   "Shadow Giratina (Altered)"  → "giratina-altered"
+//   "Alolan Marowak"             → "marowak-alolan"
+//   "Mega Charizard X"           → "charizard-mega-x"
+//   "Primal Kyogre"              → "kyogre-primal"
+//   "Galarian Zapdos"            → "zapdos-galarian"
+//   "Hisuian Typhlosion"         → "typhlosion-hisuian"
+//   "Rayquaza"                   → "rayquaza"
+function raidNameToSlug(name) {
+  if (!name) return '';
+
+  // Strip shadow/purified prefix — PokéAPI doesn't have shadow forms
+  let s = name.replace(/^(Shadow|Purified)\s+/i, '').trim();
+
+  // Extract parenthesised form suffix: "Giratina (Altered)" → base="Giratina" suffix="altered"
+  const parenMatch = s.match(/^(.+?)\s*\(([^)]+)\)$/);
+  let base = parenMatch ? parenMatch[1].trim() : s;
+  const parenSuffix = parenMatch ? parenMatch[2].toLowerCase().replace(/\s+/g, '-') : null;
+
+  // Regional/form prefixes that PokéAPI appends as suffixes
+  const REGIONAL = ['alolan', 'galarian', 'hisuian', 'paldean'];
+  const FORM_PREFIXES = ['mega', 'primal', 'origin', 'sky', 'shadow'];
+
+  const words = base.split(/\s+/);
+  const firstWord = words[0].toLowerCase();
+
+  let slug;
+
+  if (REGIONAL.includes(firstWord)) {
+    // "Alolan Marowak" → "marowak-alolan"
+    const rest = words.slice(1).join('-').toLowerCase();
+    slug = `${rest}-${firstWord}`;
+  } else if (firstWord === 'mega') {
+    // "Mega Charizard X" → "charizard-mega-x"
+    // "Mega Lopunny"     → "lopunny-mega"
+    const rest = words.slice(1);
+    const poke = rest[0].toLowerCase();
+    const extra = rest.slice(1).map(w => w.toLowerCase());
+    slug = extra.length > 0 ? `${poke}-mega-${extra.join('-')}` : `${poke}-mega`;
+  } else if (firstWord === 'primal') {
+    // "Primal Kyogre" → "kyogre-primal"
+    slug = `${words.slice(1).join('-').toLowerCase()}-primal`;
+  } else {
+    slug = words.join('-').toLowerCase();
+  }
+
+  // Append paren suffix if present and not already in slug
+  if (parenSuffix && !slug.includes(parenSuffix)) {
+    slug = `${slug}-${parenSuffix}`;
+  }
+
+  // Remove any double-dashes
+  slug = slug.replace(/--+/g, '-');
+
+  return slug;
+}
 
 function ShinyBadge() {
   return (
@@ -64,7 +120,7 @@ function RaidBossCard({ boss, onSelect }) {
     <div
       className="today-card"
       style={{ background: ts.bg, borderColor: ts.border }}
-      onClick={() => onSelect && onSelect(boss.name)}
+      onClick={() => onSelect && onSelect(raidNameToSlug(boss.name))}
       title={`View ${boss.name}`}
     >
       <div style={{ position: 'relative', flexShrink: 0 }}>
