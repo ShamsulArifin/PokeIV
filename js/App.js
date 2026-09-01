@@ -65,6 +65,7 @@ function App() {
               <span style={{ fontWeight: 800, fontSize: 14, letterSpacing: '-.02em', flex: 1 }}>GO Dex</span>
               <button className={`btn${mode === 'dex' ? ' active-blue' : ''}`} style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setMode('dex')}>Dex</button>
               <button className={`btn${mode === 'compare' ? ' active-pink' : ''}`} style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setMode('compare')}>Compare</button>
+              <button className={`btn${mode === 'today' ? ' active-blue' : ''}`} style={{ padding: '5px 12px', fontSize: 11 }} onClick={() => setMode('today')}>Today</button>
             </div>
             <SearchBar onSelect={load} />
           </div>
@@ -82,6 +83,7 @@ function App() {
             <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
               <button className={`btn${mode === 'dex' ? ' active-blue' : ''}`} onClick={() => setMode('dex')}>Dex</button>
               <button className={`btn${mode === 'compare' ? ' active-pink' : ''}`} onClick={() => setMode('compare')}>Compare</button>
+              <button className={`btn${mode === 'today' ? ' active-blue' : ''}`} onClick={() => setMode('today')}>Today</button>
             </div>
           </div>
 
@@ -89,7 +91,11 @@ function App() {
       </header>
 
       {/* ── Content ───────────────────────────────────── */}
-      {mode === 'compare' ? (
+      {mode === 'today' ? (
+
+        <TodayPanel onSelectPoke={name => { load(name); setMode('dex'); }} />
+
+      ) : mode === 'compare' ? (
 
         <main style={{ maxWidth: 1000, margin: '0 auto', padding: '20px 16px 32px' }}>
           <div style={{ marginBottom: 16 }}>

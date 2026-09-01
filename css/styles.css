@@ -215,3 +215,46 @@ th, td { text-align: center; }
   .dex-toggle-hint-mobile  { display: none; }
   .dex-toggle-hint-desktop { display: inline; }
 }
+
+/* ── TodayPanel ────────────────────────────────────────────────────────────── */
+
+/* Boss / research card base */
+.today-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px; border-radius: var(--r-md);
+  border: 1px solid var(--border); background: var(--s2);
+  transition: background .15s, border-color .15s, transform .15s;
+  cursor: pointer;
+}
+.today-card:hover {
+  background: var(--s3); border-color: var(--border2);
+  transform: translateY(-1px);
+}
+.research-card { cursor: default; }
+.research-card:hover { transform: none; background: var(--s2); border-color: var(--border); }
+
+/* Raid boss grid — responsive columns */
+.today-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+@media (min-width: 520px) {
+  .today-grid { grid-template-columns: repeat(2, 1fr); }
+}
+@media (min-width: 860px) {
+  .today-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* Research reward pill */
+.research-reward {
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  padding: 6px 8px; border-radius: var(--r-sm);
+  border: 1px solid var(--border); background: var(--s3);
+  transition: background .12s, border-color .12s, transform .12s;
+  min-width: 64px;
+}
+.research-reward:hover {
+  background: var(--s4); border-color: var(--border2);
+  transform: translateY(-1px);
+}
