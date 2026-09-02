@@ -15,11 +15,9 @@ function rc_loadImg(src) {
   return new Promise(res => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload  = () => res(img);
-    img.onerror = () => res(null);
-    // Give each image a max of 8 seconds before giving up
     const t = setTimeout(() => res(null), 8000);
-    img.onload = () => { clearTimeout(t); res(img); };
+    img.onload  = () => { clearTimeout(t); res(img); };
+    img.onerror = () => { clearTimeout(t); res(null); };
     img.src = src;
   });
 }
@@ -206,13 +204,20 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
              || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
              || null;
 
-  // Direct API fallback if still missing
-  if (!goEntry) {
+  // Direct API fallback — only for base forms (mega/form endpoints don't exist)
+  // Use a strict 4s timeout to avoid blocking the render
+  if (!goEntry && !poke.name.includes('-mega') && !poke.name.includes('-primal')) {
     try {
-      const fid = poke.name.toUpperCase().replace(/-/g, '_');
-      const r   = await fetch(`https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${fid}.json`);
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 4000);
+      const fid  = poke.name.toUpperCase().replace(/-/g, '_');
+      const r    = await fetch(
+        `https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${fid}.json`,
+        { signal: ctrl.signal }
+      );
+      clearTimeout(tid);
       if (r.ok) { const d = await r.json(); goEntry = Array.isArray(d) ? d[0] : d; }
-    } catch { /* leave null */ }
+    } catch { /* timeout or network error — skip moves */ }
   }
 
   // Moves — quickMoves and cinematicMoves are objects keyed by move ID
@@ -478,25 +483,21 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
     setStatus('rendering');
     setDataUrl(null);
 
-    const timeout = setTimeout(() => setStatus('error'), 25000);
+    const timeout = setTimeout(() => setStatus('error'), 30000);
 
-    // Wait up to 5s for the GO pokedex (needed for moves), then draw regardless
-    Promise.race([
-      fetchList().catch(() => {}),
-      new Promise(r => setTimeout(r, 5000)),
-    ]).then(() => {
-      rc_draw(canvas, poke, species, gs, shadowType)
-        .then(() => {
-          clearTimeout(timeout);
-          try { setDataUrl(canvas.toDataURL('image/png')); } catch { /* tainted canvas */ }
-          setStatus('done');
-        })
-        .catch(err => {
-          clearTimeout(timeout);
-          console.error('Raid card error:', err);
-          setStatus('error');
-        });
-    });
+    // Don't wait for fetchList — moves are optional, draw immediately
+    // goPokedexByName may already be populated if DexGrid loaded first
+    rc_draw(canvas, poke, species, gs, shadowType)
+      .then(() => {
+        clearTimeout(timeout);
+        try { setDataUrl(canvas.toDataURL('image/png')); } catch { /* tainted canvas */ }
+        setStatus('done');
+      })
+      .catch(err => {
+        clearTimeout(timeout);
+        console.error('Raid card error:', err);
+        setStatus('error');
+      });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [poke?.name, gs?.atk, shadowType]);
 
