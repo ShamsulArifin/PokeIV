@@ -16,7 +16,10 @@ function rc_loadImg(src) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload  = () => res(img);
-    img.onerror = () => res(null);   // never reject
+    img.onerror = () => res(null);
+    // Give each image a max of 8 seconds before giving up
+    const t = setTimeout(() => res(null), 8000);
+    img.onload = () => { clearTimeout(t); res(img); };
     img.src = src;
   });
 }
@@ -146,14 +149,15 @@ async function rc_loadImages(poke, counters, goEntry) {
 
   // ── Counter sprites (PokeAPI HOME sprites — CORS via GitHub CDN) ──────────
   for (const c of counters) {
-    jobs[`ctr_${c.name}`] = fetchPoke(c.name)
-      .then(p => {
+    jobs[`ctr_${c.name}`] = Promise.race([
+      fetchPoke(c.name).then(p => {
         const s = p.sprites?.other?.home?.front_default
                || p.sprites?.other?.['official-artwork']?.front_default
                || p.sprites?.front_default || '';
         return s ? rc_loadImg(s) : null;
-      })
-      .catch(() => null);
+      }).catch(() => null),
+      new Promise(r => setTimeout(() => r(null), 6000)), // skip after 6s
+    ]);
   }
 
   const keys    = Object.keys(jobs);
@@ -198,12 +202,6 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   const counters = scoredCounters(types).slice(0, 6);
 
   // ── GO entry (for moves) ──────────────────────────────────────────────
-  // poke.name is the PokeAPI slug (e.g. "mewtwo") → maps to goPokedexByName exactly.
-  // Ensure fetchList has run so goPokedexByName is populated.
-  if (typeof fetchList === 'function') {
-    try { await fetchList(); } catch { /* already cached or unavailable */ }
-  }
-
   let goEntry = goPokedexByName[poke.name]
              || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
              || null;
@@ -479,14 +477,36 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
     setStatus('rendering');
     setDataUrl(null);
 
-    rc_draw(canvasRef.current, poke, species, gs, shadowType)
-      .then(() => {
-        try {
-          setDataUrl(canvasRef.current.toDataURL('image/png'));
-        } catch { /* CORS tainted canvas — preview still works */ }
-        setStatus('done');
-      })
-      .catch(err => { console.error('Raid card error:', err); setStatus('error'); });
+    // Timeout safety — if rendering takes more than 20s, show error instead of infinite spinner
+    const timeout = setTimeout(() => {
+      setStatus('error');
+    }, 20000);
+
+    // Ensure the GO pokedex is loaded before drawing (needed for moves)
+    // Use a fast timeout so it doesn't block forever if the GO API is slow
+    const listPromise = Promise.race([
+      fetchList().catch(() => {}),
+      new Promise(r => setTimeout(r, 5000)), // give up waiting after 5s
+    ]);
+
+    listPromise.then(() => {
+      if (!canvasRef.current) return;
+      rc_draw(canvasRef.current, poke, species, gs, shadowType)
+        .then(() => {
+          clearTimeout(timeout);
+          try {
+            setDataUrl(canvasRef.current.toDataURL('image/png'));
+          } catch { /* CORS tainted canvas — preview still works */ }
+          setStatus('done');
+        })
+        .catch(err => {
+          clearTimeout(timeout);
+          console.error('Raid card error:', err);
+          setStatus('error');
+        });
+    });
+
+    return () => clearTimeout(timeout);
   }, [poke?.name, gs, shadowType]);
 
   const download = () => {
