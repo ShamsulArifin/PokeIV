@@ -116,17 +116,21 @@ async function rc_loadImages(poke, counters, goEntry) {
   if (mainSrc)  jobs.main  = rc_loadImg(mainSrc);
   if (shinySrc) jobs.shiny = rc_loadImg(shinySrc);
 
-  // Counter sprites only — no type icon images (drawn as colored circles)
+  // Counter sprites — fetch with strict timeout, skip missing ones gracefully
   for (const c of counters) {
-    jobs[`ctr_${c.name}`] = Promise.race([
-      fetchPoke(c.name).then(p => {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 5000);
+    jobs[`ctr_${c.name}`] = fetch(`https://pokeapi.co/api/v2/pokemon/${c.name}`, { signal: ctrl.signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(p => {
+        clearTimeout(tid);
+        if (!p) return null;
         const s = p.sprites?.other?.home?.front_default
                || p.sprites?.other?.['official-artwork']?.front_default
                || p.sprites?.front_default || '';
         return s ? rc_loadImg(s) : null;
-      }).catch(() => null),
-      new Promise(r => setTimeout(() => r(null), 6000)),
-    ]);
+      })
+      .catch(() => { clearTimeout(tid); return null; });
   }
 
   const keys    = Object.keys(jobs);
@@ -447,26 +451,23 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
   const [status,  setStatus]  = React.useState('rendering');
   const [dataUrl, setDataUrl] = React.useState(null);
 
-  // Use a callback ref — fires as soon as the canvas is in the DOM
   const canvasCallback = React.useCallback(canvas => {
     if (!canvas || !poke || !gs) return;
 
     setStatus('rendering');
     setDataUrl(null);
 
-    const timeout = setTimeout(() => setStatus('error'), 30000);
-
-    // Don't wait for fetchList — moves are optional, draw immediately
-    // goPokedexByName may already be populated if DexGrid loaded first
-    rc_draw(canvas, poke, species, gs, shadowType)
+    // Race rc_draw against a hard timeout — if drawing takes >20s, show error
+    Promise.race([
+      rc_draw(canvas, poke, species, gs, shadowType),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 20000)),
+    ])
       .then(() => {
-        clearTimeout(timeout);
-        try { setDataUrl(canvas.toDataURL('image/png')); } catch { /* tainted canvas */ }
+        try { setDataUrl(canvas.toDataURL('image/png')); } catch { /* tainted */ }
         setStatus('done');
       })
       .catch(err => {
-        clearTimeout(timeout);
-        console.error('Raid card error:', err);
+        console.error('Raid card draw error:', err);
         setStatus('error');
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
