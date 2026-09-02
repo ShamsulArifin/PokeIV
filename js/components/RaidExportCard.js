@@ -205,6 +205,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   console.log('[RaidCard] images loaded:', Object.keys(imgs).length);
 
   // ════════════════════════ RENDER ════════════════════════════════════
+  try {
 
   // ── Background ────────────────────────────────────────────────────────
   const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
@@ -436,6 +437,12 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     CARD_W / 2, FMY, '500 15px Inter, sans-serif', 'rgba(255,255,255,0.3)', 'center');
   rc_txtMid(ctx, 'Not affiliated with Niantic or Nintendo',
     CARD_W - P, FMY, '500 13px Inter, sans-serif', 'rgba(255,255,255,0.2)', 'right');
+
+  console.log('[RaidCard] draw complete');
+  } catch(e) {
+    console.error('[RaidCard] draw exception:', e);
+    throw e;
+  }
 }
 
 // ═══════════════════════════ REACT MODAL ═════════════════════════════════
