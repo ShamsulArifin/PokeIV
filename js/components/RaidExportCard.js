@@ -6,9 +6,6 @@ const CARD_W = 1080;
 const CARD_H = 1260;
 const P      = 44;   // outer padding
 
-// Type icon URL proxied through weserv.nl for CORS-safe canvas drawing
-const RC_TYPE_ICON = t => `https://images.weserv.nl/?url=assets.dittobase.com/go/types/${t}.png`;
-
 // ═══════════════════════════ CANVAS HELPERS ═══════════════════════════════
 
 function rc_loadImg(src) {
@@ -62,59 +59,40 @@ function rc_txtMid(ctx, text, x, midY, font, fill, align = 'left', maxW) {
   ctx.textBaseline = 'alphabetic';
 }
 
-// ── Type badge drawn using real dittobase icon (CORS-proxied) ─────────────
-// imgs must contain `ti_{typeName}` loaded via RC_TYPE_ICON
-function rc_typePill(ctx, typeName, x, y, imgs) {
+// ── Type badge — pure canvas, no images needed ────────────────────────────
+function rc_typePill(ctx, typeName, x, y) {
   const col  = TYPE_COLORS[typeName] || '#888';
   const FONT = '700 21px Inter, sans-serif';
   ctx.font   = FONT;
   const lw   = ctx.measureText(cap(typeName)).width;
-  const ICON = 26;
-  const bw   = 10 + ICON + 8 + lw + 12;
+  const bw   = lw + 28;
   const bh   = 38;
 
-  // Pill background
+  // Solid pill
   rc_rrect(ctx, x, y, bw, bh, 19);
-  ctx.fillStyle   = rc_hexA(col, 0.22);
+  ctx.fillStyle   = rc_hexA(col, 0.25);
   ctx.fill();
-  ctx.strokeStyle = rc_hexA(col, 0.7);
+  ctx.strokeStyle = rc_hexA(col, 0.8);
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
-  // Icon
-  const tImg = imgs?.[`ti_${typeName}`];
-  if (tImg) {
-    ctx.drawImage(tImg, x + 10, y + (bh - ICON) / 2, ICON, ICON);
-  } else {
-    // Fallback: coloured dot
-    ctx.beginPath();
-    ctx.arc(x + 10 + ICON / 2, y + bh / 2, ICON / 2, 0, Math.PI * 2);
-    ctx.fillStyle = col; ctx.fill();
-  }
-
-  // Label
-  rc_txtMid(ctx, cap(typeName), x + 10 + ICON + 8, y + bh / 2, FONT, col);
+  rc_txtMid(ctx, cap(typeName), x + bw / 2, y + bh / 2, FONT, col, 'center');
   return bw;
 }
 
-// ── Inline type icon for move list / weakness row ─────────────────────────
-// Draws the real dittobase icon at (x, midY-r) with size 2r
-function rc_typeIcon(ctx, typeName, x, midY, r, imgs) {
-  const col  = TYPE_COLORS[typeName] || '#888';
-  const tImg = imgs?.[`ti_${typeName}`];
-  const d    = r * 2;
-  if (tImg) {
-    ctx.drawImage(tImg, x, midY - r, d, d);
-  } else {
-    // Fallback circle
-    ctx.beginPath();
-    ctx.arc(x + r, midY, r, 0, Math.PI * 2);
-    ctx.fillStyle = col; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1.5; ctx.stroke();
-    rc_txtMid(ctx, (typeName||'').slice(0,2).toUpperCase(),
-      x + r, midY, `700 ${Math.round(r * 0.9)}px Inter, sans-serif`, '#fff', 'center');
-  }
+// ── Small type circle with 2-letter abbreviation ──────────────────────────
+function rc_typeIcon(ctx, typeName, x, midY, r) {
+  const col = TYPE_COLORS[typeName] || '#888';
+  ctx.beginPath();
+  ctx.arc(x + r, midY, r, 0, Math.PI * 2);
+  ctx.fillStyle = col;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  const abbr = (typeName || '').slice(0, 2).toUpperCase();
+  rc_txtMid(ctx, abbr, x + r, midY,
+    `700 ${Math.max(9, Math.round(r * 0.85))}px Inter, sans-serif`, '#fff', 'center');
 }
 
 // ═══════════════════════════ IMAGE LOADER ═════════════════════════════════
@@ -122,9 +100,7 @@ function rc_typeIcon(ctx, typeName, x, midY, r, imgs) {
 async function rc_loadImages(poke, counters, goEntry) {
   const jobs = {};
 
-  // ── Pokémon sprites ─────────────────────────────────────────────────────
-  // Prefer PokeAPI official artwork (high-res, CORS-safe) for the main card sprite.
-  // GO assets are lower-res icons. Fall through the chain until we find something.
+  // Main sprite
   const mainSrc =
        poke.sprites?.other?.['official-artwork']?.front_default
     || poke.sprites?.other?.home?.front_default
@@ -140,12 +116,7 @@ async function rc_loadImages(poke, counters, goEntry) {
   if (mainSrc)  jobs.main  = rc_loadImg(mainSrc);
   if (shinySrc) jobs.shiny = rc_loadImg(shinySrc);
 
-  // ── Type icons (proxied through weserv.nl for CORS) ─────────────────────
-  for (const t of Object.keys(TYPE_COLORS)) {
-    jobs[`ti_${t}`] = rc_loadImg(RC_TYPE_ICON(t));
-  }
-
-  // ── Counter sprites (PokeAPI HOME sprites — CORS via GitHub CDN) ──────────
+  // Counter sprites only — no type icon images (drawn as colored circles)
   for (const c of counters) {
     jobs[`ctr_${c.name}`] = Promise.race([
       fetchPoke(c.name).then(p => {
@@ -154,7 +125,7 @@ async function rc_loadImages(poke, counters, goEntry) {
                || p.sprites?.front_default || '';
         return s ? rc_loadImg(s) : null;
       }).catch(() => null),
-      new Promise(r => setTimeout(() => r(null), 6000)), // skip after 6s
+      new Promise(r => setTimeout(() => r(null), 6000)),
     ]);
   }
 
@@ -290,7 +261,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   let tx = LEFT_X;
   const TYPE_ROW_Y = P + 158;
   for (const t of types) {
-    const bw = rc_typePill(ctx, t, tx, TYPE_ROW_Y, imgs);
+    const bw = rc_typePill(ctx, t, tx, TYPE_ROW_Y);
     tx += bw + 10;
   }
 
@@ -349,7 +320,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   const DOT_SP = DOT_R * 2 + 6;
   for (const wt of weakTypes) {
     if (wx + DOT_R * 2 > LEFT_X + LEFT_W) break;
-    rc_typeIcon(ctx, wt, wx, IY - DOT_R + 4, DOT_R, imgs);
+    rc_typeIcon(ctx, wt, wx, IY - DOT_R + 4, DOT_R);
     wx += DOT_SP;
   }
   IY += IL;
@@ -400,7 +371,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     list.forEach((m, i) => {
       const rowMidY = startY + i * MOVE_H + MOVE_H / 2;
       // Real type icon
-      rc_typeIcon(ctx, m.type, colX, rowMidY, 16, imgs);
+      rc_typeIcon(ctx, m.type, colX, rowMidY, 16);
       // Move name
       rc_txtMid(ctx, m.name, colX + 42, rowMidY, MOVE_FONT, '#f0f0f6', 'left', 290);
     });
@@ -454,7 +425,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     rc_txt(ctx, effL, mid, CE_Y, '700 15px Inter, sans-serif', effC, 'center');
 
     // Best move type icon
-    rc_typeIcon(ctx, c.bestMoveType, mid - 14, CD_Y + 12, 14, imgs);
+    rc_typeIcon(ctx, c.bestMoveType, mid - 14, CD_Y + 12, 14);
   }
 
   // ── Footer ────────────────────────────────────────────────────────────
