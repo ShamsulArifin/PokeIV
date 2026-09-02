@@ -148,39 +148,31 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   const ctx = canvas.getContext('2d');
   canvas.width  = CARD_W;
   canvas.height = CARD_H;
+  console.log('[RaidCard] draw start', poke.name, gs);
 
   const types      = (poke.types || []).map(t => t.type.name);
   const primaryCol = TYPE_COLORS[types[0]] || '#6c6ef5';
   const secondCol  = TYPE_COLORS[types[1]] || primaryCol;
 
-  // Stats (shadow-adjusted)
   const atkStat = shadowType === 'shadow' ? Math.round(gs.atk * 1.2) : gs.atk;
   const defStat = shadowType === 'shadow' ? Math.round(gs.def * 0.8) : gs.def;
   const hpStat  = gs.hp;
 
-  // CP
   const cpMin  = calcCP(gs.atk, gs.def, gs.hp, 10, 10, 10, 20);
   const cpMax  = calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, 20);
   const cpBMin = calcCP(gs.atk, gs.def, gs.hp, 10, 10, 10, 25);
   const cpBMax = calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, 25);
 
-  // Weather
   const weatherLabels = weatherForTypes(types);
-
-  // Weaknesses
   const { weak } = typeWeaknesses(types);
   const weakTypes = [...weak].sort((a, b) => b.m - a.m).map(w => w.t);
-
-  // Counters
   const counters = scoredCounters(types).slice(0, 6);
+  console.log('[RaidCard] counters', counters.map(c => c.name));
 
-  // ── GO entry (for moves) ──────────────────────────────────────────────
   let goEntry = goPokedexByName[poke.name]
              || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
              || null;
 
-  // Direct API fallback — only for base forms (mega/form endpoints don't exist)
-  // Use a strict 4s timeout to avoid blocking the render
   if (!goEntry && !poke.name.includes('-mega') && !poke.name.includes('-primal')) {
     try {
       const ctrl = new AbortController();
@@ -194,8 +186,8 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
       if (r.ok) { const d = await r.json(); goEntry = Array.isArray(d) ? d[0] : d; }
     } catch { /* timeout or network error — skip moves */ }
   }
+  console.log('[RaidCard] goEntry found:', !!goEntry);
 
-  // Moves — quickMoves and cinematicMoves are objects keyed by move ID
   const toArr = obj =>
     obj && !Array.isArray(obj) ? Object.values(obj) : (obj || []);
 
@@ -208,8 +200,9 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     type: goTypeToSlug(m.type?.type || ''),
   }));
 
-  // ── Load images ───────────────────────────────────────────────────────
+  console.log('[RaidCard] loading images...');
   const imgs = await rc_loadImages(poke, counters, goEntry);
+  console.log('[RaidCard] images loaded:', Object.keys(imgs).length);
 
   // ════════════════════════ RENDER ════════════════════════════════════
 
@@ -452,7 +445,11 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
   const [dataUrl, setDataUrl] = React.useState(null);
 
   const canvasCallback = React.useCallback(canvas => {
-    if (!canvas || !poke || !gs) return;
+    if (!canvas || !poke || !gs) {
+      console.log('[RaidCard] canvasCallback: missing', { canvas: !!canvas, poke: !!poke, gs: !!gs });
+      return;
+    }
+    console.log('[RaidCard] canvasCallback: starting draw for', poke.name, gs);
 
     setStatus('rendering');
     setDataUrl(null);
