@@ -468,35 +468,27 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
 // ═══════════════════════════ REACT MODAL ═════════════════════════════════
 
 function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
-  const canvasRef = React.useRef(null);
   const [status,  setStatus]  = React.useState('rendering');
   const [dataUrl, setDataUrl] = React.useState(null);
 
-  React.useEffect(() => {
-    if (!poke || !gs || !canvasRef.current) return;
+  // Use a callback ref — fires as soon as the canvas is in the DOM
+  const canvasCallback = React.useCallback(canvas => {
+    if (!canvas || !poke || !gs) return;
+
     setStatus('rendering');
     setDataUrl(null);
 
-    // Timeout safety — if rendering takes more than 20s, show error instead of infinite spinner
-    const timeout = setTimeout(() => {
-      setStatus('error');
-    }, 20000);
+    const timeout = setTimeout(() => setStatus('error'), 25000);
 
-    // Ensure the GO pokedex is loaded before drawing (needed for moves)
-    // Use a fast timeout so it doesn't block forever if the GO API is slow
-    const listPromise = Promise.race([
+    // Wait up to 5s for the GO pokedex (needed for moves), then draw regardless
+    Promise.race([
       fetchList().catch(() => {}),
-      new Promise(r => setTimeout(r, 5000)), // give up waiting after 5s
-    ]);
-
-    listPromise.then(() => {
-      if (!canvasRef.current) return;
-      rc_draw(canvasRef.current, poke, species, gs, shadowType)
+      new Promise(r => setTimeout(r, 5000)),
+    ]).then(() => {
+      rc_draw(canvas, poke, species, gs, shadowType)
         .then(() => {
           clearTimeout(timeout);
-          try {
-            setDataUrl(canvasRef.current.toDataURL('image/png'));
-          } catch { /* CORS tainted canvas — preview still works */ }
+          try { setDataUrl(canvas.toDataURL('image/png')); } catch { /* tainted canvas */ }
           setStatus('done');
         })
         .catch(err => {
@@ -505,9 +497,8 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
           setStatus('error');
         });
     });
-
-    return () => clearTimeout(timeout);
-  }, [poke?.name, gs, shadowType]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [poke?.name, gs?.atk, shadowType]);
 
   const download = () => {
     if (!dataUrl) return;
@@ -554,7 +545,7 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
 
         {/* Canvas preview */}
         <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', lineHeight: 0 }}>
-          <canvas ref={canvasRef} style={{ width: '100%', height: 'auto', display: 'block' }} />
+          <canvas ref={canvasCallback} style={{ width: '100%', height: 'auto', display: 'block' }} />
         </div>
 
         {/* Download */}
