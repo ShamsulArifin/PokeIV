@@ -59,45 +59,56 @@ function rc_txtMid(ctx, text, x, midY, font, fill, align = 'left', maxW) {
   ctx.textBaseline = 'alphabetic';
 }
 
-// ── Type badge — pure canvas, no images needed ────────────────────────────
-function rc_typePill(ctx, typeName, x, y) {
+// ── Type badge — uses dittobase icon if loaded, falls back to colored pill ─
+function rc_typePill(ctx, typeName, x, y, imgs) {
   const col  = TYPE_COLORS[typeName] || '#888';
   const FONT = '700 21px Inter, sans-serif';
   ctx.font   = FONT;
   const lw   = ctx.measureText(cap(typeName)).width;
-  const bw   = lw + 28;
+  const ICON = 26;
+  const bw   = 10 + ICON + 8 + lw + 12;
   const bh   = 38;
 
-  // Solid pill
   rc_rrect(ctx, x, y, bw, bh, 19);
-  ctx.fillStyle   = rc_hexA(col, 0.25);
+  ctx.fillStyle   = rc_hexA(col, 0.22);
   ctx.fill();
-  ctx.strokeStyle = rc_hexA(col, 0.8);
+  ctx.strokeStyle = rc_hexA(col, 0.7);
   ctx.lineWidth   = 1.5;
   ctx.stroke();
 
-  rc_txtMid(ctx, cap(typeName), x + bw / 2, y + bh / 2, FONT, col, 'center');
+  const tImg = imgs?.[`ti_${typeName}`];
+  if (tImg) {
+    ctx.drawImage(tImg, x + 10, y + (bh - ICON) / 2, ICON, ICON);
+  } else {
+    ctx.beginPath();
+    ctx.arc(x + 10 + ICON / 2, y + bh / 2, ICON / 2 - 1, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+  }
+
+  rc_txtMid(ctx, cap(typeName), x + 10 + ICON + 8, y + bh / 2, FONT, col);
   return bw;
 }
 
-// ── Small type circle with 2-letter abbreviation ──────────────────────────
-function rc_typeIcon(ctx, typeName, x, midY, r) {
-  const col = TYPE_COLORS[typeName] || '#888';
-  ctx.beginPath();
-  ctx.arc(x + r, midY, r, 0, Math.PI * 2);
-  ctx.fillStyle = col;
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.4)';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  const abbr = (typeName || '').slice(0, 2).toUpperCase();
-  rc_txtMid(ctx, abbr, x + r, midY,
-    `700 ${Math.max(9, Math.round(r * 0.85))}px Inter, sans-serif`, '#fff', 'center');
+// ── Type icon circle — uses dittobase icon if loaded, else colored circle ─
+function rc_typeIcon(ctx, typeName, x, midY, r, imgs) {
+  const col  = TYPE_COLORS[typeName] || '#888';
+  const tImg = imgs?.[`ti_${typeName}`];
+  if (tImg) {
+    ctx.drawImage(tImg, x, midY - r, r * 2, r * 2);
+  } else {
+    ctx.beginPath();
+    ctx.arc(x + r, midY, r, 0, Math.PI * 2);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 1; ctx.stroke();
+    rc_txtMid(ctx, (typeName || '').slice(0, 2).toUpperCase(),
+      x + r, midY, `700 ${Math.max(9, Math.round(r * 0.85))}px Inter, sans-serif`, '#fff', 'center');
+  }
 }
 
 // ═══════════════════════════ IMAGE LOADER ═════════════════════════════════
 
-async function rc_loadImages(poke, counters, goEntry) {
+async function rc_loadImages(poke, counters, goEntry, neededTypes) {
   const jobs = {};
 
   // Main sprite
@@ -115,6 +126,13 @@ async function rc_loadImages(poke, counters, goEntry) {
 
   if (mainSrc)  jobs.main  = rc_loadImg(mainSrc);
   if (shinySrc) jobs.shiny = rc_loadImg(shinySrc);
+
+  // Load only the type icons actually used on the card (via weserv.nl for CORS)
+  for (const t of (neededTypes || [])) {
+    jobs[`ti_${t}`] = rc_loadImg(
+      `https://images.weserv.nl/?url=assets.dittobase.com/go/types/${t}.png&w=32&h=32`
+    );
+  }
 
   // Counter sprites — fetch with strict timeout, skip missing ones gracefully
   for (const c of counters) {
@@ -149,33 +167,17 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   canvas.width  = CARD_W;
   canvas.height = CARD_H;
 
-  const types      = (poke.types || []).map(t => t.type.name);
-  const primaryCol = TYPE_COLORS[types[0]] || '#6c6ef5';
-  const secondCol  = TYPE_COLORS[types[1]] || primaryCol;
-
-  const atkStat = shadowType === 'shadow' ? Math.round(gs.atk * 1.2) : gs.atk;
-  const defStat = shadowType === 'shadow' ? Math.round(gs.def * 0.8) : gs.def;
-  const hpStat  = gs.hp;
-
-  const cpMin  = calcCP(gs.atk, gs.def, gs.hp, 10, 10, 10, 20);
-  const cpMax  = calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, 20);
-  const cpBMin = calcCP(gs.atk, gs.def, gs.hp, 10, 10, 10, 25);
-  const cpBMax = calcCP(gs.atk, gs.def, gs.hp, 15, 15, 15, 25);
-
-  const weatherLabels = weatherForTypes(types);
-  const { weak } = typeWeaknesses(types);
-  const weakTypes = [...weak].sort((a, b) => b.m - a.m).map(w => w.t);
-  const counters = scoredCounters(types).slice(0, 6);
+  // ── Resolve GO entry ────────────────────────────────────────────────────
+  // We need this first so we can get accurate stats, types, and moves.
+  const toArr = obj =>
+    obj && !Array.isArray(obj) ? Object.values(obj) : (obj || []);
+  const hasMoves = e => toArr(e?.quickMoves).length > 0 || toArr(e?.cinematicMoves).length > 0;
 
   let goEntry = goPokedexByName[poke.name]
              || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
              || null;
 
-  const toArr = obj =>
-    obj && !Array.isArray(obj) ? Object.values(obj) : (obj || []);
-  const hasMoves = e => toArr(e?.quickMoves).length > 0 || toArr(e?.cinematicMoves).length > 0;
-
-  // Mega/primal/form entries have no moves — fall back to base form entry
+  // Mega/primal entries carry no moves — fall back to base form for moves
   if (goEntry && !hasMoves(goEntry)) {
     const baseName = poke.name
       .replace(/-mega(-[xy])?$/, '').replace(/-primal$/, '')
@@ -186,7 +188,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     if (base && hasMoves(base)) goEntry = base;
   }
 
-  // If still no moves, fetch from GO API — use dex number for megas/forms
+  // Network fallback — fetch base form by dex number for alt forms
   if (!hasMoves(goEntry)) {
     const isAltForm = /-(mega|primal|gmax)/.test(poke.name);
     const endpoint  = isAltForm
@@ -201,6 +203,38 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     } catch { /* skip */ }
   }
 
+  // ── Accurate GO stats (prefer goEntry over approximate gs from App) ──────
+  // For the mega form entry, use goEntry.stats directly if it has the mega stats.
+  // For the base-form fallback entry (used for moves), keep the original gs.
+  let goStats = gs;
+  const megaGoEntry = goPokedexByName[poke.name]
+                   || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
+                   || null;
+  if (megaGoEntry?.stats) {
+    goStats = { atk: megaGoEntry.stats.attack, def: megaGoEntry.stats.defense, hp: megaGoEntry.stats.stamina };
+  }
+
+  // ── Types ───────────────────────────────────────────────────────────────
+  const types      = (poke.types || []).map(t => t.type.name);
+  const primaryCol = TYPE_COLORS[types[0]] || '#6c6ef5';
+  const secondCol  = TYPE_COLORS[types[1]] || primaryCol;
+
+  // ── Derived stats ────────────────────────────────────────────────────────
+  const atkStat = shadowType === 'shadow' ? Math.round(goStats.atk * 1.2) : goStats.atk;
+  const defStat = shadowType === 'shadow' ? Math.round(goStats.def * 0.8) : goStats.def;
+  const hpStat  = goStats.hp;
+
+  const cpMin  = calcCP(goStats.atk, goStats.def, goStats.hp, 10, 10, 10, 20);
+  const cpMax  = calcCP(goStats.atk, goStats.def, goStats.hp, 15, 15, 15, 20);
+  const cpBMin = calcCP(goStats.atk, goStats.def, goStats.hp, 10, 10, 10, 25);
+  const cpBMax = calcCP(goStats.atk, goStats.def, goStats.hp, 15, 15, 15, 25);
+
+  const weatherLabels = weatherForTypes(types);
+  const { weak } = typeWeaknesses(types);
+  const weakTypes = [...weak].sort((a, b) => b.m - a.m).map(w => w.t);
+  const counters  = scoredCounters(types).slice(0, 6);
+
+  // ── Moves ────────────────────────────────────────────────────────────────
   const fastMoves   = toArr(goEntry?.quickMoves).slice(0, 4).map(m => ({
     name: m.names?.English || (m.id || '').replace(/_FAST$/, '').replace(/_/g, ' ') || '?',
     type: goTypeToSlug(m.type?.type || ''),
@@ -210,7 +244,15 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     type: goTypeToSlug(m.type?.type || ''),
   }));
 
-  const imgs = await rc_loadImages(poke, counters, goEntry);
+  // ── Load images ──────────────────────────────────────────────────────────
+  const neededTypes = [...new Set([
+    ...types, ...weakTypes,
+    ...fastMoves.map(m => m.type),
+    ...chargeMoves.map(m => m.type),
+    ...counters.map(c => c.bestMoveType),
+  ].filter(Boolean))];
+
+  const imgs = await rc_loadImages(poke, counters, goEntry, neededTypes);
 
   // ════════════════════════ RENDER ════════════════════════════════════
   try {
@@ -267,7 +309,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   let tx = LEFT_X;
   const TYPE_ROW_Y = P + 158;
   for (const t of types) {
-    const bw = rc_typePill(ctx, t, tx, TYPE_ROW_Y);
+    const bw = rc_typePill(ctx, t, tx, TYPE_ROW_Y, imgs);
     tx += bw + 10;
   }
 
@@ -326,7 +368,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   const DOT_SP = DOT_R * 2 + 6;
   for (const wt of weakTypes) {
     if (wx + DOT_R * 2 > LEFT_X + LEFT_W) break;
-    rc_typeIcon(ctx, wt, wx, IY - DOT_R + 4, DOT_R);
+    rc_typeIcon(ctx, wt, wx, IY - DOT_R + 4, DOT_R, imgs);
     wx += DOT_SP;
   }
   IY += IL;
@@ -377,7 +419,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     list.forEach((m, i) => {
       const rowMidY = startY + i * MOVE_H + MOVE_H / 2;
       // Real type icon
-      rc_typeIcon(ctx, m.type, colX, rowMidY, 16);
+      rc_typeIcon(ctx, m.type, colX, rowMidY, 16, imgs);
       // Move name
       rc_txtMid(ctx, m.name, colX + 42, rowMidY, MOVE_FONT, '#f0f0f6', 'left', 290);
     });
@@ -431,7 +473,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     rc_txt(ctx, effL, mid, CE_Y, '700 15px Inter, sans-serif', effC, 'center');
 
     // Best move type icon
-    rc_typeIcon(ctx, c.bestMoveType, mid - 14, CD_Y + 12, 14);
+    rc_typeIcon(ctx, c.bestMoveType, mid - 14, CD_Y + 12, 14, imgs);
   }
 
   // ── Footer ────────────────────────────────────────────────────────────
