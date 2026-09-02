@@ -148,7 +148,6 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   const ctx = canvas.getContext('2d');
   canvas.width  = CARD_W;
   canvas.height = CARD_H;
-  console.log('[RaidCard] draw start', poke.name, gs);
 
   const types      = (poke.types || []).map(t => t.type.name);
   const primaryCol = TYPE_COLORS[types[0]] || '#6c6ef5';
@@ -167,7 +166,6 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   const { weak } = typeWeaknesses(types);
   const weakTypes = [...weak].sort((a, b) => b.m - a.m).map(w => w.t);
   const counters = scoredCounters(types).slice(0, 6);
-  console.log('[RaidCard] counters', counters.map(c => c.name));
 
   let goEntry = goPokedexByName[poke.name]
              || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
@@ -186,7 +184,6 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
       if (r.ok) { const d = await r.json(); goEntry = Array.isArray(d) ? d[0] : d; }
     } catch { /* timeout or network error — skip moves */ }
   }
-  console.log('[RaidCard] goEntry found:', !!goEntry);
 
   const toArr = obj =>
     obj && !Array.isArray(obj) ? Object.values(obj) : (obj || []);
@@ -200,9 +197,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
     type: goTypeToSlug(m.type?.type || ''),
   }));
 
-  console.log('[RaidCard] loading images...');
   const imgs = await rc_loadImages(poke, counters, goEntry);
-  console.log('[RaidCard] images loaded:', Object.keys(imgs).length);
 
   // ════════════════════════ RENDER ════════════════════════════════════
   try {
@@ -237,15 +232,15 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   rc_txt(ctx, `No. ${poke.id}`, LEFT_X, P + 36,
     '600 28px Inter, sans-serif', 'rgba(255,255,255,0.45)');
 
-  // Name
+  // Name — shrink font until it fits the left column
   const dispName = fmtName(poke.name);
-  ctx.font = '800 72px Inter, sans-serif';
-  let nameFont = '800 72px Inter, sans-serif';
-  while (ctx.measureText(dispName).width > LEFT_W && parseInt(nameFont) > 36) {
-    const sz = parseInt(nameFont) - 4;
-    nameFont = `800 ${sz}px Inter, sans-serif`;
-    ctx.font = nameFont;
+  let nameFontSize = 72;
+  ctx.font = `800 ${nameFontSize}px Inter, sans-serif`;
+  while (ctx.measureText(dispName).width > LEFT_W && nameFontSize > 36) {
+    nameFontSize -= 4;
+    ctx.font = `800 ${nameFontSize}px Inter, sans-serif`;
   }
+  const nameFont = `800 ${nameFontSize}px Inter, sans-serif`;
   rc_txt(ctx, dispName, LEFT_X, P + 104, nameFont, '#ffffff', 'left', LEFT_W);
 
   // Shadow / Purified tag
@@ -438,9 +433,8 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   rc_txtMid(ctx, 'Not affiliated with Niantic or Nintendo',
     CARD_W - P, FMY, '500 13px Inter, sans-serif', 'rgba(255,255,255,0.2)', 'right');
 
-  console.log('[RaidCard] draw complete');
   } catch(e) {
-    console.error('[RaidCard] draw exception:', e);
+    console.error('Raid card draw error:', e);
     throw e;
   }
 }
@@ -452,11 +446,7 @@ function RaidExportCard({ poke, species, gs, shadowType, onClose }) {
   const [dataUrl, setDataUrl] = React.useState(null);
 
   const canvasCallback = React.useCallback(canvas => {
-    if (!canvas || !poke || !gs) {
-      console.log('[RaidCard] canvasCallback: missing', { canvas: !!canvas, poke: !!poke, gs: !!gs });
-      return;
-    }
-    console.log('[RaidCard] canvasCallback: starting draw for', poke.name, gs);
+    if (!canvas || !poke || !gs) return;
 
     setStatus('rendering');
     setDataUrl(null);
