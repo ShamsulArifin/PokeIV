@@ -205,6 +205,7 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
   }
 
   let goEntry = goPokedexByName[poke.name]
+             || goPokedexByName[pokeapiSlugToGoKey(poke.name)]
              || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
              || null;
 

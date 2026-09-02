@@ -24,9 +24,9 @@ function DexGrid({ onSelect, activeName }) {
     if      (form === 'base')     l = l.filter(p => !p.virtual && !p.tag);
     else if (form === 'shadow')   l = l.filter(p => p.shadowType === 'shadow');
     else if (form === 'purified') l = l.filter(p => p.shadowType === 'purified');
-    else if (form === 'alolan')   l = l.filter(p => p.name.includes('-alola'));
-    else if (form === 'galarian') l = l.filter(p => p.name.includes('-galar'));
-    else if (form === 'hisuian')  l = l.filter(p => p.name.includes('-hisui'));
+    else if (form === 'alolan')   l = l.filter(p => p.goName?.includes('-alola')   || p.name.includes('-alolan'));
+    else if (form === 'galarian') l = l.filter(p => p.goName?.includes('-galar')   || p.name.includes('-galarian'));
+    else if (form === 'hisuian')  l = l.filter(p => p.goName?.includes('-hisui')   || p.name.includes('-hisuian'));
     else if (form === 'mega')     l = l.filter(p => p.name.includes('-mega') || p.name.includes('-primal'));
     else if (form === 'forms')    l = l.filter(p => p.tag && !p.virtual);
     return l;
