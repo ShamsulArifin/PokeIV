@@ -207,10 +207,27 @@ function MovesPanel({ poke }) {
     );
   }
 
-  const fastMoves   = toMoveArr(goEntry.quickMoves);
-  const chargeMoves = toMoveArr(goEntry.cinematicMoves);
-  const eliteFast   = toMoveArr(goEntry.eliteQuickMoves);
-  const eliteCharge = toMoveArr(goEntry.eliteCinematicMoves);
+  let fastMoves   = toMoveArr(goEntry.quickMoves);
+  let chargeMoves = toMoveArr(goEntry.cinematicMoves);
+  let eliteFast   = toMoveArr(goEntry.eliteQuickMoves);
+  let eliteCharge = toMoveArr(goEntry.eliteCinematicMoves);
+
+  // Mega/primal forms have no moves — fall back to base form in cache
+  if (fastMoves.length === 0 && chargeMoves.length === 0) {
+    const baseName = poke.name
+      .replace(/-mega(-[xy])?$/, '').replace(/-primal$/, '')
+      .replace(/-gmax$/, '').replace(/-origin$/, '')
+      .replace(/-therian$/, '').replace(/-shadow$/, '')
+      .replace(/-ice$/, '').replace(/-crowned$/, '');
+    const baseEntry = baseName !== poke.name
+      ? (goPokedexByName[baseName] || null) : null;
+    if (baseEntry) {
+      fastMoves   = toMoveArr(baseEntry.quickMoves);
+      chargeMoves = toMoveArr(baseEntry.cinematicMoves);
+      eliteFast   = toMoveArr(baseEntry.eliteQuickMoves);
+      eliteCharge = toMoveArr(baseEntry.eliteCinematicMoves);
+    }
+  }
 
   // Deduplicate: elite moves may overlap with regular moves.
   // Treat them as legacy-flagged and merge into a single sorted list.

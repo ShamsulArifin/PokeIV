@@ -171,22 +171,35 @@ async function rc_draw(canvas, poke, species, gs, shadowType) {
              || goPokedexByFormId[poke.name.toUpperCase().replace(/-/g, '_')]
              || null;
 
-  if (!goEntry && !poke.name.includes('-mega') && !poke.name.includes('-primal')) {
+  const toArr = obj =>
+    obj && !Array.isArray(obj) ? Object.values(obj) : (obj || []);
+  const hasMoves = e => toArr(e?.quickMoves).length > 0 || toArr(e?.cinematicMoves).length > 0;
+
+  // Mega/primal/form entries have no moves — fall back to base form entry
+  if (goEntry && !hasMoves(goEntry)) {
+    const baseName = poke.name
+      .replace(/-mega(-[xy])?$/, '').replace(/-primal$/, '')
+      .replace(/-gmax$/, '').replace(/-origin$/, '')
+      .replace(/-therian$/, '').replace(/-shadow$/, '')
+      .replace(/-ice$/, '').replace(/-crowned$/, '');
+    const base = goPokedexByName[baseName];
+    if (base && hasMoves(base)) goEntry = base;
+  }
+
+  // If still no moves, fetch from GO API — use dex number for megas/forms
+  if (!hasMoves(goEntry)) {
+    const isAltForm = /-(mega|primal|gmax)/.test(poke.name);
+    const endpoint  = isAltForm
+      ? `https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${poke.id}.json`
+      : `https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${poke.name.toUpperCase().replace(/-/g, '_')}.json`;
     try {
       const ctrl = new AbortController();
       const tid  = setTimeout(() => ctrl.abort(), 4000);
-      const fid  = poke.name.toUpperCase().replace(/-/g, '_');
-      const r    = await fetch(
-        `https://pokemon-go-api.github.io/pokemon-go-api/api/pokedex/id/${fid}.json`,
-        { signal: ctrl.signal }
-      );
+      const r    = await fetch(endpoint, { signal: ctrl.signal });
       clearTimeout(tid);
       if (r.ok) { const d = await r.json(); goEntry = Array.isArray(d) ? d[0] : d; }
-    } catch { /* timeout or network error — skip moves */ }
+    } catch { /* skip */ }
   }
-
-  const toArr = obj =>
-    obj && !Array.isArray(obj) ? Object.values(obj) : (obj || []);
 
   const fastMoves   = toArr(goEntry?.quickMoves).slice(0, 4).map(m => ({
     name: m.names?.English || (m.id || '').replace(/_FAST$/, '').replace(/_/g, ' ') || '?',
