@@ -264,21 +264,23 @@ function TodayPanel({ onSelectPoke }) {
   const [raidLoad, setRaidLoad]   = React.useState(false);
   const [resLoad, setResLoad]     = React.useState(false);
 
-  // Fetch raids
+  // Fetch raids — cache-bust so GitHub CDN always returns latest data
   React.useEffect(() => {
     if (raids || raidErr) return;
     setRaidLoad(true);
-    fetch(`${SCRAPED_DUCK_BASE}/raids.json`)
+    const bust = `?t=${Math.floor(Date.now() / 60000)}`; // changes every minute
+    fetch(`${SCRAPED_DUCK_BASE}/raids.json${bust}`)
       .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
       .then(data => { setRaids(data); setRaidLoad(false); })
       .catch(() => { setRaidErr('Could not load raid data.'); setRaidLoad(false); });
   }, []);
 
-  // Fetch research
+  // Fetch research — cache-bust so GitHub CDN always returns latest data
   React.useEffect(() => {
     if (research || resErr) return;
     setResLoad(true);
-    fetch(`${SCRAPED_DUCK_BASE}/research.json`)
+    const bust = `?t=${Math.floor(Date.now() / 60000)}`;
+    fetch(`${SCRAPED_DUCK_BASE}/research.json${bust}`)
       .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
       .then(data => { setResearch(data); setResLoad(false); })
       .catch(() => { setResErr('Could not load research data.'); setResLoad(false); });
@@ -314,18 +316,33 @@ function TodayPanel({ onSelectPoke }) {
     <div style={{ maxWidth: 900, margin: '0 auto', padding: '20px 16px 40px' }}>
 
       {/* Header */}
-      <div style={{ marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.02em', marginBottom: 4 }}>
-          Today in Pokémon GO
-        </h2>
-        <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
-          Current raid bosses &amp; field research tasks · Data via{' '}
-          <a href="https://leekduck.com" target="_blank" rel="noopener"
-            style={{ color: 'var(--accent-light)', textDecoration: 'none' }}>LeekDuck.com</a>
-          {' &amp; '}
-          <a href="https://github.com/bigfoott/ScrapedDuck" target="_blank" rel="noopener"
-            style={{ color: 'var(--accent-light)', textDecoration: 'none' }}>ScrapedDuck</a>
-        </p>
+      <div style={{ marginBottom: 20, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+        <div>
+          <h2 style={{ fontSize: 20, fontWeight: 800, letterSpacing: '-.02em', marginBottom: 4 }}>
+            Today in Pokémon GO
+          </h2>
+          <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.5 }}>
+            Current raid bosses &amp; field research tasks · Data via{' '}
+            <a href="https://leekduck.com" target="_blank" rel="noopener"
+              style={{ color: 'var(--accent-light)', textDecoration: 'none' }}>LeekDuck.com</a>
+            {' &amp; '}
+            <a href="https://github.com/bigfoott/ScrapedDuck" target="_blank" rel="noopener"
+              style={{ color: 'var(--accent-light)', textDecoration: 'none' }}>ScrapedDuck</a>
+          </p>
+        </div>
+        <button
+          className="btn"
+          style={{ flexShrink: 0, gap: 6, fontSize: 12 }}
+          disabled={raidLoad || resLoad}
+          onClick={() => { setRaids(null); setResearch(null); setRaidErr(null); setResErr(null); }}
+          title="Refresh data"
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Refresh
+        </button>
       </div>
 
       {/* Tab switcher */}

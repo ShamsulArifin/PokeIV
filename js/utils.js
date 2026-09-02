@@ -178,16 +178,7 @@ async function resolveGoStats(poke) {
     .replace(/-alolan$/, '-alola')
     .replace(/-galarian$/, '-galar')
     .replace(/-hisuian$/, '-hisui')
-    .replace(/-paldean$/, '-paldea')
-    // PokeAPI form suffixes → shorter GO API keys
-    .replace(/-crowned-sword$/, '-crowned')
-    .replace(/-crowned-shield$/, '-crowned')
-    .replace(/-shadow-rider$/, '-shadow')
-    .replace(/-ice-rider$/, '-ice')
-    .replace(/-rapid-strike-style$/, '-rapid-strike')
-    .replace(/-single-strike-style$/, '-single-strike')
-    .replace(/-hero-of-many-battles$/, '')   // Zacian/Zamazenta base → just "zacian"
-    .replace(/-bloodmoon$/, '-bloodmoon');    // Ursaluna bloodmoon (already matches)
+    .replace(/-paldean$/, '-paldea');
   if (normalized !== slugForCache) {
     const byNorm = getGoStatsFromCache(normalized);
     if (byNorm) return byNorm;

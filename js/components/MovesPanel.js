@@ -155,12 +155,10 @@ function MovesPanel({ poke }) {
     setLoading(true);
     setGoEntry(null);
 
-    // 1. Try in-memory maps — goPokedexByName is keyed by both GO slug AND PokeAPI slug
+    // 1. Try in-memory maps (populated by fetchList on DexGrid mount)
     const formIdKey = poke.name.toUpperCase().replace(/-/g, '_');
-    const goKey     = pokeapiSlugToGoKey(poke.name);  // convert PokeAPI → GO key
-    let entry = goPokedexByName[poke.name]   // PokeAPI slug (stored via dual-store)
-             || goPokedexByName[goKey]        // GO slug fallback
-             || goPokedexByFormId[formIdKey]  // uppercase formId fallback
+    let entry = goPokedexByName[poke.name]
+             || goPokedexByFormId[formIdKey]
              || null;
 
     if (entry) {
@@ -172,7 +170,6 @@ function MovesPanel({ poke }) {
     // 2. Ensure fetchList has run, then re-check maps
     fetchList().then(() => {
       const found = goPokedexByName[poke.name]
-                 || goPokedexByName[pokeapiSlugToGoKey(poke.name)]
                  || goPokedexByFormId[formIdKey]
                  || null;
       if (found) {

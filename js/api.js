@@ -35,23 +35,6 @@ const fetchEvoChain = async url => {
   return (cache[url] = await r.json());
 };
 
-// ── Normalize a PokeAPI slug to the GO API name key used in goPokedexByName ─
-// goPokedexByName keys are GO API formIds lowercased with _ → -
-// PokeAPI uses different suffixes for several forms.
-function pokeapiSlugToGoKey(slug) {
-  return slug
-    .replace(/-alolan$/, '-alola')
-    .replace(/-galarian$/, '-galar')
-    .replace(/-hisuian$/, '-hisui')
-    .replace(/-paldean$/, '-paldea')
-    .replace(/-crowned-sword$/, '-crowned')
-    .replace(/-crowned-shield$/, '-crowned')
-    .replace(/-shadow-rider$/, '-shadow')
-    .replace(/-ice-rider$/, '-ice')
-    .replace(/-rapid-strike-style$/, '-rapid-strike')
-    .replace(/-single-strike-style$/, '-single-strike')
-    .replace(/-hero-of-many-battles$/, '');
-}
 function goTypeToSlug(typeKey) {
   return typeKey.replace('POKEMON_TYPE_', '').toLowerCase();
 }
@@ -62,37 +45,8 @@ function buildEntryFromGo(goEntry, overrideName, overrideTag) {
   const dexNr  = goEntry.dexNr;
   const name   = goEntry.names?.English || formId;
 
-  // GO API slug (our internal key)
+  // Derive a slug (lowercase, underscores→dashes) — matches PokeAPI slugs for all forms
   const slug = formId.toLowerCase().replace(/_/g, '-');
-
-  // PokeAPI-compatible slug for actually fetching the Pokémon.
-  // Most forms match the GO slug but a few have different suffixes.
-  const pokeapiSlug = slug
-    .replace(/-alola$/, '-alolan')
-    .replace(/-galar$/, '-galarian')
-    .replace(/-hisui$/, '-hisuian')
-    .replace(/-paldea$/, '-paldean')
-    .replace(/-crowned$/, name.toLowerCase().includes('zacian') ? '-crowned-sword' : '-crowned-shield')
-    .replace(/-shadow$/, (slug.startsWith('calyrex') ? '-shadow-rider' : slug))
-    .replace(/-ice$/, (slug.startsWith('calyrex') ? '-ice-rider' : slug))
-    .replace(/-rapid-strike$/, '-rapid-strike-style')
-    .replace(/-single-strike$/, '-single-strike-style');
-
-  // For calyrex forms the replace chain above overwrites the whole slug, so fix those separately
-  const pokeapiName = (() => {
-    if (slug === 'zacian-crowned')    return 'zacian-crowned-sword';
-    if (slug === 'zamazenta-crowned') return 'zamazenta-crowned-shield';
-    if (slug === 'calyrex-shadow')    return 'calyrex-shadow-rider';
-    if (slug === 'calyrex-ice')       return 'calyrex-ice-rider';
-    if (slug === 'urshifu-rapid-strike')  return 'urshifu-rapid-strike-style';
-    if (slug === 'urshifu-single-strike') return 'urshifu-single-strike-style';
-    // Regional forms: GO uses -alola, PokeAPI uses -alolan etc
-    if (slug.endsWith('-alola'))   return slug.replace(/-alola$/, '-alolan');
-    if (slug.endsWith('-galar'))   return slug.replace(/-galar$/, '-galarian');
-    if (slug.endsWith('-hisui'))   return slug.replace(/-hisui$/, '-hisuian');
-    if (slug.endsWith('-paldea'))  return slug.replace(/-paldea$/, '-paldean');
-    return slug;  // most forms match exactly
-  })();
 
   const pokeapiSid = pokeapiSpriteId(slug, dexNr);
 
@@ -100,24 +54,21 @@ function buildEntryFromGo(goEntry, overrideName, overrideTag) {
   if (goEntry.primaryType)   types.push(goTypeToSlug(goEntry.primaryType.type));
   if (goEntry.secondaryType) types.push(goTypeToSlug(goEntry.secondaryType.type));
 
-  // Store in lookup maps using GO slug key
+  // Store in lookup maps
   goPokedexByFormId[formId] = goEntry;
   goPokedexByName[slug]     = goEntry;
-  // Also store under PokeAPI slug so MovesPanel/RaidExportCard can find it
-  if (pokeapiName !== slug) goPokedexByName[pokeapiName] = goEntry;
 
   return {
-    name:       pokeapiName,   // ← PokeAPI-fetchable slug (used by SearchBar → load())
-    goName:     slug,          // ← GO API slug (internal key)
-    id:         dexNr,
-    dn:         overrideName || name,
-    tag:        overrideTag  || getFormTag(slug),
-    sid:        pokeapiSid,
-    goImg:      goEntry.assets?.image      || null,
+    name:     slug,        // GO slug = PokeAPI slug for all forms
+    id:       dexNr,
+    dn:       overrideName || name,
+    tag:      overrideTag  || getFormTag(slug),
+    sid:      pokeapiSid,
+    goImg:    goEntry.assets?.image      || null,
     goImgShiny: goEntry.assets?.shinyImage || null,
     types,
     formId,
-    virtual:    false,
+    virtual:  false,
   };
 }
 

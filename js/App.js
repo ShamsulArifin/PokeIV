@@ -16,7 +16,7 @@ function App() {
 
   // ── Load a Pokémon ───────────────────────────────────────────────────────
   const load = React.useCallback(async nameOrId => {
-    setLoading(true); setError(null); setIsShiny(false);
+    setLoading(true); setError(null); setIsShiny(false); setShowExport(false);
     let api = String(nameOrId).toLowerCase(), sh = null;
     if (api.endsWith('-shadow'))   { sh = 'shadow';   api = api.replace(/-shadow$/, ''); }
     if (api.endsWith('-purified')) { sh = 'purified'; api = api.replace(/-purified$/, ''); }
@@ -95,7 +95,7 @@ function App() {
       {/* ── Content ───────────────────────────────────── */}
       {mode === 'today' ? (
 
-        <TodayPanel onSelectPoke={name => { load(name); setMode('dex'); }} />
+        <TodayPanel onSelectPoke={name => { setShowExport(false); load(name); setMode('dex'); }} />
 
       ) : mode === 'compare' ? (
 
